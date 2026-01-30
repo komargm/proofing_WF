@@ -9,4 +9,14 @@ final class RequireRole {
       }
     };
   }
+
+  /** Pozwala na dostęp dla jednej z wielu ról (np. admin lub client). */
+  public static function handleAny(array $roles): callable {
+    return function () use ($roles): void {
+      $cur = (string)($_SESSION['user_role'] ?? '');
+      if ($cur === '' || !in_array($cur, $roles, true)) {
+        Response::html('Forbidden', 403);
+      }
+    };
+  }
 }

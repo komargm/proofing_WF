@@ -19,6 +19,10 @@ $admin  = new AdminController();
 $adminUsers = new AdminUsersController($usersRepo);
 $ingest = new IngestWizardController($ingestRepo);
 
+$adminAlbums = new AdminAlbumsController($albumRepo, $photoRepo);
+$adminPhotoActionsRepo = new AdminPhotoActionsRepository();
+$adminPhotoActions = new AdminPhotoActionsController($adminPhotoActionsRepo);
+
 $media  = new MediaController($photoRepo);
 $clientActions = new ClientActionsController($photoActionsRepo);
 
@@ -56,10 +60,34 @@ $router->post('/client/photo/{id}/comment', fn($params) => $clientActions->addCo
 
 $router->get('/media/photo/{id}/{kind}', fn($params) => $media->photoFile($params), [
   RequireAuth::handle(),
-  RequireRole::handle('client'),
+  RequireRole::handleAny(['client','admin']),
 ]);
 
 $router->get('/admin/dashboard', fn() => $admin->dashboard(), [
+  RequireAuth::handle(),
+  RequireRole::handle('admin'),
+]);
+
+$router->get('/admin/albums', fn() => $adminAlbums->index(), [
+  RequireAuth::handle(),
+  RequireRole::handle('admin'),
+]);
+
+$router->get('/admin/album/{id}/edit', fn($p) => $adminAlbums->edit($p), [
+  RequireAuth::handle(),
+  RequireRole::handle('admin'),
+]);
+$router->post('/admin/album/{id}/edit', fn($p) => $adminAlbums->update($p), [
+  RequireAuth::handle(),
+  RequireRole::handle('admin'),
+]);
+
+$router->get('/admin/album/{id}/photos', fn($p) => $adminAlbums->photos($p), [
+  RequireAuth::handle(),
+  RequireRole::handle('admin'),
+]);
+
+$router->post('/admin/photo/{id}/comment', fn($p) => $adminPhotoActions->addComment($p), [
   RequireAuth::handle(),
   RequireRole::handle('admin'),
 ]);

@@ -6,6 +6,7 @@ final class MediaController {
 
   public function photoFile(array $params): void {
     $userId = (int)($_SESSION['user_id'] ?? 0);
+    $role = (string)($_SESSION['user_role'] ?? '');
     $photoId = isset($params['id']) ? (int)$params['id'] : 0;
     $kind = (string)($params['kind'] ?? '');
 
@@ -14,7 +15,11 @@ final class MediaController {
       Response::html('Bad Request', 400);
     }
 
-    $path = $this->photos->filePathForUser($userId, $photoId, $kind);
+    if ($role === 'admin') {
+      $path = $this->photos->filePathForAdmin($photoId, $kind);
+    } else {
+      $path = $this->photos->filePathForUser($userId, $photoId, $kind);
+    }
     if (!$path) {
       Response::html('Forbidden', 403);
     }

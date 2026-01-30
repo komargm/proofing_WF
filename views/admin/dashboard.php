@@ -4,6 +4,7 @@
 
 <div style="margin: 16px 0; display:flex; gap:12px; flex-wrap:wrap;">
   <a class="btn" href="/admin/albums/create">+ Utwórz album (Ingest Wizard)</a>
+  <a class="btn" href="/admin/users">Zarządzanie klientami</a>
   <a class="btn" href="/client/dashboard">Podgląd jako klient</a>
 </div>
 

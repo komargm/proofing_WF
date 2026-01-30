@@ -16,6 +16,7 @@ $ingestRepo = new IngestRepository();
 $auth   = new AuthController($authService);
 $client = new ClientController($albumRepo, $photoRepo);
 $admin  = new AdminController();
+$adminUsers = new AdminUsersController($usersRepo);
 $ingest = new IngestWizardController($ingestRepo);
 
 $media  = new MediaController($photoRepo);
@@ -59,6 +60,20 @@ $router->get('/media/photo/{id}/{kind}', fn($params) => $media->photoFile($param
 ]);
 
 $router->get('/admin/dashboard', fn() => $admin->dashboard(), [
+  RequireAuth::handle(),
+  RequireRole::handle('admin'),
+]);
+
+$router->get('/admin/users', fn() => $adminUsers->index(), [
+  RequireAuth::handle(),
+  RequireRole::handle('admin'),
+]);
+
+$router->get('/admin/users/create', fn() => $adminUsers->create(), [
+  RequireAuth::handle(),
+  RequireRole::handle('admin'),
+]);
+$router->post('/admin/users/create', fn() => $adminUsers->store(), [
   RequireAuth::handle(),
   RequireRole::handle('admin'),
 ]);

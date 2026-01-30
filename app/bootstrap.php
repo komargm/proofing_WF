@@ -38,6 +38,7 @@ require_once __DIR__ . '/Controllers/AuthController.php';
 require_once __DIR__ . '/Controllers/ClientController.php';
 require_once __DIR__ . '/Controllers/ClientActionsController.php';
 require_once __DIR__ . '/Controllers/AdminController.php';
+require_once __DIR__ . '/Controllers/AdminUsersController.php';
 require_once __DIR__ . '/Controllers/IngestWizardController.php';
 require_once __DIR__ . '/Controllers/MediaController.php';
 

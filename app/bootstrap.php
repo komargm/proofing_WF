@@ -1,14 +1,12 @@
 <?php
 declare(strict_types=1);
 
-$config = require __DIR__ . '/../config/config.php';
 $configPath = __DIR__ . '/../config/config.php';
 $config = require $configPath;
 
 if (!is_array($config)) {
   throw new RuntimeException("Config file did not return array: {$configPath}");
 }
-
 
 ini_set('session.cookie_httponly', '1');
 ini_set('session.use_strict_mode', '1');
@@ -30,6 +28,7 @@ require_once __DIR__ . '/Middlewares/RequireAuth.php';
 require_once __DIR__ . '/Middlewares/RequireRole.php';
 
 require_once __DIR__ . '/Repositories/UserRepository.php';
+require_once __DIR__ . '/Repositories/AlbumRepository.php';
 require_once __DIR__ . '/Services/AuthService.php';
 
 require_once __DIR__ . '/Controllers/AuthController.php';

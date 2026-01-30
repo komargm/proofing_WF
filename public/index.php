@@ -82,6 +82,22 @@ $router->post('/admin/album/{id}/edit', fn($p) => $adminAlbums->update($p), [
   RequireRole::handle('admin'),
 ]);
 
+// Admin: Rescan albumu (odśwież preview/thumb gdy oryginał się zmienił)
+$router->post('/admin/album/{id}/rescan', fn($p) => $adminAlbums->rescanStart($p), [
+  RequireAuth::handle(),
+  RequireRole::handle('admin'),
+]);
+
+$router->get('/admin/album/{id}/rescan/run/{job}', fn($p) => $adminAlbums->rescanRunPage($p), [
+  RequireAuth::handle(),
+  RequireRole::handle('admin'),
+]);
+
+$router->get('/admin/album/{id}/rescan/stream/{job}', fn($p) => $adminAlbums->rescanStream($p), [
+  RequireAuth::handle(),
+  RequireRole::handle('admin'),
+]);
+
 $router->get('/admin/album/{id}/photos', fn($p) => $adminAlbums->photos($p), [
   RequireAuth::handle(),
   RequireRole::handle('admin'),

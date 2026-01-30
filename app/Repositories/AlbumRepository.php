@@ -71,4 +71,97 @@ final class AlbumRepository {
     $stmt->bindValue('id', $albumId, PDO::PARAM_INT);
     $stmt->execute();
   }
+
+  /**
+   * Buduje plan rescanu dla pojedynczego albumu:
+   * - porównuje rozmiar + mtime pliku oryginalnego (photo_files.kind=original_jpg)
+   *   z wartościami w bazie (file_size_bytes, file_mtime)
+   * - jeśli różne (albo NULL) -> wrzuca do items do regeneracji preview_800 + thumb
+   * - aktualizuje w DB metadane oryginału do bieżących (żeby następny rescan był szybki)
+   *
+   * @return array{items:array<int, array{photo_id:int, src:string, preview_dest:string, thumb_dest:string}>}
+   */
+  public function buildRescanPlan(int $albumId): array {
+    $sql = "
+      SELECT
+        p.id AS photo_id,
+        ofi.path AS src,
+        ofi.file_size_bytes AS db_size,
+        ofi.file_mtime AS db_mtime,
+        pfi.path AS preview_dest,
+        tfi.path AS thumb_dest
+      FROM photos p
+      JOIN photo_files ofi ON ofi.photo_id = p.id AND ofi.kind = 'original_jpg'
+      JOIN photo_files pfi ON pfi.photo_id = p.id AND pfi.kind = 'preview_800'
+      JOIN photo_files tfi ON tfi.photo_id = p.id AND tfi.kind = 'thumb'
+      WHERE p.album_id = :aid
+      ORDER BY p.sort_order ASC, p.id ASC
+    ";
+    $stmt = db()->prepare($sql);
+    $stmt->execute(['aid' => $albumId]);
+    $rows = $stmt->fetchAll() ?: [];
+
+    $items = [];
+
+    $upd = db()->prepare(
+      "UPDATE photo_files
+       SET file_size_bytes = :sz,
+           file_mtime = :mt
+       WHERE photo_id = :pid AND kind = 'original_jpg'"
+    );
+
+    foreach ($rows as $r) {
+      $pid = (int)$r['photo_id'];
+      $src = (string)$r['src'];
+      $preview = (string)$r['preview_dest'];
+      $thumb = (string)$r['thumb_dest'];
+
+      if ($src === '' || !is_file($src)) {
+        // brak oryginału: pomijamy, ale nie wywalamy całego joba
+        continue;
+      }
+
+      $fsz = @filesize($src);
+      $fmt = @filemtime($src);
+      if ($fsz === false || $fmt === false) {
+        continue;
+      }
+
+      $dbSize = $r['db_size'] !== null ? (int)$r['db_size'] : null;
+      // db_mtime przychodzi jako string DATETIME albo null
+      $dbMtimeStr = $r['db_mtime'] !== null ? (string)$r['db_mtime'] : null;
+      $dbMtime = null;
+      if ($dbMtimeStr) {
+        $ts = strtotime($dbMtimeStr . ' UTC');
+        if ($ts !== false) $dbMtime = $ts;
+      }
+
+      $needs = false;
+      if ($dbSize === null || $dbMtime === null) {
+        $needs = true;
+      } else {
+        if ($dbSize !== (int)$fsz) $needs = true;
+        // Zaokrąglamy do sekund (DATETIME)
+        if ((int)$dbMtime !== (int)$fmt) $needs = true;
+      }
+
+      // aktualizujemy metadane oryginału (zawsze — nawet jeśli nie ma zmian, bo po ingest mogło być NULL)
+      $upd->execute([
+        'sz' => (int)$fsz,
+        'mt' => gmdate('Y-m-d H:i:s', (int)$fmt),
+        'pid' => $pid,
+      ]);
+
+      if ($needs) {
+        $items[] = [
+          'photo_id' => $pid,
+          'src' => $src,
+          'preview_dest' => $preview,
+          'thumb_dest' => $thumb,
+        ];
+      }
+    }
+
+    return ['items' => $items];
+  }
 }

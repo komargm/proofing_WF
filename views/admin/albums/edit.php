@@ -31,3 +31,14 @@
     </div>
   </form>
 </div>
+
+<div class="card" style="max-width: 860px; margin-top: 16px;">
+  <h3 style="margin:0 0 8px 0;">Narzędzia</h3>
+  <p class="muted" style="margin-top:0;">Rescan porównuje oryginały z metadanymi w bazie i regeneruje tylko te preview + miniaturki, które faktycznie się zmieniły (np. po poprawce 2 z 10 zdjęć).</p>
+
+  <form method="post" action="/admin/album/<?= (int)$album['id'] ?>/rescan" style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
+    <input type="hidden" name="csrf" value="<?= htmlspecialchars(Csrf::token(), ENT_QUOTES, 'UTF-8') ?>" />
+    <input type="hidden" name="watermark" value="1" />
+    <button class="btn" type="submit" onclick="return confirm('Uruchomić rescan albumu? Zostaną nadpisane preview i miniaturki dla zmienionych plików.');">Rescan albumu</button>
+  </form>
+</div>

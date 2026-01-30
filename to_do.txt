@@ -2,195 +2,105 @@ Plan budowy strony WWW (WhisperedFrames)
 Faza 0 — Fundamenty (1:1 pod Twoją architekturę)
 
 Cel: mieć szkielet aplikacji, routing, sesje, autoryzację, widoki.
-
 Struktura katalogów w src/
-
 public/ (front controller, assets)
-
 app/ (logika)
-
 Controllers/
-
 Middlewares/
-
 Services/
-
 Repositories/
-
 Views/
-
 storage/ (logi, cache — jeśli potrzebne)
-
 config/ (DB, env mapping)
-
 Front controller
-
 public/index.php jako jedyne wejście
-
 prosty router (na start własny, później można podmienić na FastRoute)
-
 Połączenie z DB
-
 PDO, jedna klasa Database (singleton albo DI)
-
 ustawienie trybu wyjątków + utf8mb4
 
 Faza 1 — Logowanie + sesje + role
 
 Cel: wejść na /login, zalogować się, przekierować do /admin/* lub /client/*.
-
 Widok /login
-
 formularz email + hasło
-
 komunikat ogólny przy błędzie (bez zdradzania emaila)
-
 AuthService
-
 weryfikacja hasła (password_verify)
-
 zapis sesji: user_id, role, ewentualnie csrf_token
-
 Middleware
-
 RequireAuth
-
 RequireRole('admin')
-
 RequireRole('client')
-
 Logout
-
 /logout czyści sesję
 
 Faza 2 — Panel Klienta (MVP)
-
 Cel: klient widzi swoje albumy → wchodzi w album → widzi grid → lightbox z oceną/sercem/komentarzami.
-
 /client/dashboard
-
 query z user_album_access + albums
-
 kafelki: cover + tytuł + data + status
-
 /client/album/{id}
-
 pobranie zdjęć albumu + thumb + preview
-
 pod miniaturą: ostatni komentarz (LEFT JOIN / subquery)
-
 filtry: wszystkie / wybrane / 5★
-
 licznik “Wybrano X”
-
 przycisk „Zatwierdź wybór” (na start może tylko ustawiać flagę/event w audit)
-
 Akcje AJAX (proste endpointy)
-
 POST /client/photo/{id}/toggle-select
-
 POST /client/photo/{id}/rate
-
 POST /client/photo/{id}/comment
-
 Lightbox (frontend)
-
 otwierany po kliknięciu miniatury
-
 ładuje tylko preview
-
 panel boczny: gwiazdki, serce, lista komentarzy + dodanie komentarza
 
 Faza 3 — Panel Admina (MVP)
-
 Cel: admin widzi albumy, zarządza użytkownikami, odblokowuje download.
-
 /admin/dashboard
-
 proste statystyki: liczba albumów, zdjęć, ostatnie zdarzenia z audit_log
-
 /admin/users
-
 lista users
-
 dodanie usera (generowanie hasła + hash)
-
 aktywacja/dezaktywacja (is_active)
-
 /admin/albums
-
 lista albumów
-
 wejście w zarządzanie: /admin/album/{id}/manage
-
 /admin/album/{id}/manage
-
 grid jak u klienta, ale:
-
 podgląd komentarzy + wyróżnienie nowych
-
 masowe akcje:
-
 odblokuj pobieranie dla zaznaczonych (ustawia download_allowed_at)
-
 status generacji plików (czy są rekordy photo_files dla preview/thumb)
 
 Faza 4 — Download (bezpieczny)
-
 Cel: klient pobiera ORYGINAŁ tylko po decyzji admina.
-
 Endpoint
-
 GET /download/photo/{id}
-
 sprawdza:
-
 user ma dostęp do albumu
-
 photo należy do albumu
-
 download_allowed_at != NULL
-
 stream pliku z NAS + Content-Disposition: attachment
-
 log do audit_log
-
 (opcjonalnie) Preview przez proxy
-
 jeśli chcesz maks bezpieczeństwa: preview też idzie przez PHP (tak jak opisałeś)
 
 Faza 5 — Ingest Wizard (najcięższy, na końcu)
-
 Cel: admin tworzy album + wybiera folder NAS + selekcja JPG + generacja preview/thumb.
-
 4 kroki jak w specyfikacji
-
 listowanie katalogów z PATH_ORIGINALS
-
 selekcja zdjęć + checkbox watermark
-
 uruchomienie procesu Python i logi na żywo (SSE / WebSocket)
-
 To zostawiamy na koniec, bo WWW może działać wcześniej nawet z albumami dodanymi “ręcznie” do DB.
-
 Kolejność wdrożenia (żeby szybko zobaczyć efekt)
-
 Login + role + middleware
-
 Client dashboard + album grid
-
 Lightbox + komentarze + serce + ocena
-
 Admin: users + albums + manage + odblokowanie download
-
 Download endpoint
-
 Ingest Wizard + SSE
-
 Jeśli chcesz, w następnym kroku mogę od razu rozpisać:
-
 strukturę katalogów src/
-
 listę konkretnych endpointów + co zwracają (HTML/JSON)
-
 minimalne tabele widoków (SQL-e do dashboardu i albumu)

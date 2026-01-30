@@ -2,7 +2,10 @@
 declare(strict_types=1);
 
 final class ClientController {
-  public function __construct(private AlbumRepository $albums) {}
+  public function __construct(
+    private AlbumRepository $albums,
+    private PhotoRepository $photos,
+  ) {}
 
   public function dashboard(): void {
     $userId = (int)($_SESSION['user_id'] ?? 0);
@@ -27,9 +30,12 @@ final class ClientController {
       Response::html('Forbidden', 403);
     }
 
-    // Placeholder pod Fazę 3 (grid zdjęć)
+    $photos = $this->photos->listForUserAlbum($userId, $albumId);
+
     Response::html(View::page('client/album', [
       'album' => $album,
+      'photos' => $photos,
+      'count' => count($photos),
     ]));
   }
 }

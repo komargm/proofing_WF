@@ -11,7 +11,6 @@ if (!is_array($config)) {
 ini_set('session.cookie_httponly', '1');
 ini_set('session.use_strict_mode', '1');
 
-// If you terminate TLS before Nginx (e.g., Synology reverse proxy), you may want:
 if (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
   ini_set('session.cookie_secure', '1');
 }
@@ -29,11 +28,16 @@ require_once __DIR__ . '/Middlewares/RequireRole.php';
 
 require_once __DIR__ . '/Repositories/UserRepository.php';
 require_once __DIR__ . '/Repositories/AlbumRepository.php';
+require_once __DIR__ . '/Repositories/PhotoRepository.php';
+require_once __DIR__ . '/Repositories/PhotoActionsRepository.php';
+
 require_once __DIR__ . '/Services/AuthService.php';
 
 require_once __DIR__ . '/Controllers/AuthController.php';
 require_once __DIR__ . '/Controllers/ClientController.php';
+require_once __DIR__ . '/Controllers/ClientActionsController.php';
 require_once __DIR__ . '/Controllers/AdminController.php';
+require_once __DIR__ . '/Controllers/MediaController.php';
 
 function db(): PDO {
   static $pdo = null;

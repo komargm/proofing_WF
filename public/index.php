@@ -11,10 +11,12 @@ $authService = new AuthService($usersRepo);
 $albumRepo = new AlbumRepository();
 $photoRepo = new PhotoRepository();
 $photoActionsRepo = new PhotoActionsRepository();
+$ingestRepo = new IngestRepository();
 
 $auth   = new AuthController($authService);
 $client = new ClientController($albumRepo, $photoRepo);
 $admin  = new AdminController();
+$ingest = new IngestWizardController($ingestRepo);
 
 $media  = new MediaController($photoRepo);
 $clientActions = new ClientActionsController($photoActionsRepo);
@@ -57,6 +59,51 @@ $router->get('/media/photo/{id}/{kind}', fn($params) => $media->photoFile($param
 ]);
 
 $router->get('/admin/dashboard', fn() => $admin->dashboard(), [
+  RequireAuth::handle(),
+  RequireRole::handle('admin'),
+]);
+
+// Ingest Wizard (Faza 5)
+$router->get('/admin/albums/create', fn() => $ingest->step1(), [
+  RequireAuth::handle(),
+  RequireRole::handle('admin'),
+]);
+$router->post('/admin/albums/create/step1', fn() => $ingest->step1Post(), [
+  RequireAuth::handle(),
+  RequireRole::handle('admin'),
+]);
+
+$router->get('/admin/albums/create/source', fn() => $ingest->step2(), [
+  RequireAuth::handle(),
+  RequireRole::handle('admin'),
+]);
+$router->get('/admin/albums/create/source/list', fn() => $ingest->listDirs(), [
+  RequireAuth::handle(),
+  RequireRole::handle('admin'),
+]);
+$router->post('/admin/albums/create/source', fn() => $ingest->step2Post(), [
+  RequireAuth::handle(),
+  RequireRole::handle('admin'),
+]);
+
+$router->get('/admin/albums/create/select', fn() => $ingest->step3(), [
+  RequireAuth::handle(),
+  RequireRole::handle('admin'),
+]);
+$router->get('/admin/albums/create/select/list', fn() => $ingest->listJpgs(), [
+  RequireAuth::handle(),
+  RequireRole::handle('admin'),
+]);
+$router->post('/admin/albums/create/finalize', fn() => $ingest->finalize(), [
+  RequireAuth::handle(),
+  RequireRole::handle('admin'),
+]);
+
+$router->get('/admin/albums/create/run/{job}', fn($p) => $ingest->runPage($p), [
+  RequireAuth::handle(),
+  RequireRole::handle('admin'),
+]);
+$router->get('/admin/albums/create/stream/{job}', fn($p) => $ingest->stream($p), [
   RequireAuth::handle(),
   RequireRole::handle('admin'),
 ]);

@@ -30,6 +30,7 @@ require_once __DIR__ . '/Repositories/UserRepository.php';
 require_once __DIR__ . '/Repositories/AlbumRepository.php';
 require_once __DIR__ . '/Repositories/PhotoRepository.php';
 require_once __DIR__ . '/Repositories/PhotoActionsRepository.php';
+require_once __DIR__ . '/Repositories/IngestRepository.php';
 
 require_once __DIR__ . '/Services/AuthService.php';
 
@@ -37,6 +38,7 @@ require_once __DIR__ . '/Controllers/AuthController.php';
 require_once __DIR__ . '/Controllers/ClientController.php';
 require_once __DIR__ . '/Controllers/ClientActionsController.php';
 require_once __DIR__ . '/Controllers/AdminController.php';
+require_once __DIR__ . '/Controllers/IngestWizardController.php';
 require_once __DIR__ . '/Controllers/MediaController.php';
 
 function db(): PDO {

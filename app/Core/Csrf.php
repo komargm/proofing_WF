@@ -18,4 +18,13 @@ final class Csrf {
       Response::html('Bad Request', 400);
     }
   }
+
+  /**
+   * Skrót używany w kontrolerach.
+   * Obsługuje pole POST _csrf albo nagłówek X-CSRF-Token.
+   */
+  public static function validate(): void {
+    $token = $_POST['_csrf'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? null);
+    self::verifyOrFail(is_string($token) ? $token : null);
+  }
 }

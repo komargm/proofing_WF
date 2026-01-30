@@ -11,5 +11,8 @@ return [
   ],
   'app' => [
     'session_name' => 'wf_session',
+    // Mounty z docker-compose (Raport wdrożeniowy)
+    'path_originals' => getenv('PATH_ORIGINALS') ?: '/var/www/photos/originals',
+    'path_proofing'  => getenv('PATH_PROOFING')  ?: '/var/www/photos/previews',
   ],
 ];

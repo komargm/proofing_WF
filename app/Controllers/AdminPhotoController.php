@@ -29,4 +29,44 @@ final class AdminPhotoController {
 
     Response::json(['ok' => true, 'allowed' => ($allowed === 1)]);
   }
+  public function delete(array $params): void {
+    $photoId = isset($params['id']) ? (int)$params['id'] : 0;
+    if ($photoId <= 0) {
+      Response::html('Bad Request', 400);
+    }
+
+    Csrf::verifyOrFail($_POST['csrf'] ?? null);
+
+    $res = $this->photos->adminDeletePhoto($photoId);
+    if (!$res) {
+      Response::html('Not Found', 404);
+    }
+
+    // Usuwamy fizycznie tylko preview/thumb (nie dotykamy oryginałów na NAS).
+    foreach ($res['delete_paths'] as $p) {
+      $real = $this->safeRealPathProofing((string)$p);
+      if ($real && is_file($real)) {
+        @unlink($real);
+      }
+    }
+
+    $albumId = (int)$res['album_id'];
+    Response::redirect("/admin/album/{$albumId}/photos");
+  }
+
+  private function safeRealPathProofing(string $path): ?string {
+    $real = realpath($path);
+    if (!$real) return null;
+
+    $config = require __DIR__ . '/../../config/config.php';
+    $proofing = (string)($config['app']['path_proofing'] ?? '/var/www/photos/previews');
+    $rootReal = realpath($proofing);
+    if (!$rootReal) return null;
+
+    if (str_starts_with($real, $rootReal . DIRECTORY_SEPARATOR)) {
+      return $real;
+    }
+    return null;
+  }
+
 }

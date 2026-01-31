@@ -378,4 +378,48 @@ final class PhotoRepository {
     ];
   }
 
+
+  /**
+   * Admin: usuwa zdjęcie z systemu (DB) i zwraca ścieżki preview/thumb do skasowania z dysku.
+   * UWAGA: NIE usuwa pliku oryginału (original_jpg) z NAS – usuwa tylko rekordy w DB.
+   *
+   * @return array{album_id:int, delete_paths:array<int,string>}|null
+   */
+  public function adminDeletePhoto(int $photoId): ?array {
+    $pdo = db();
+
+    // album_id + ścieżki plików do usunięcia
+    $stmt = $pdo->prepare("SELECT album_id FROM photos WHERE id = :pid LIMIT 1");
+    $stmt->execute(['pid' => $photoId]);
+    $albumId = (int)($stmt->fetchColumn() ?: 0);
+    if ($albumId <= 0) return null;
+
+    $stmt = $pdo->prepare("SELECT path FROM photo_files WHERE photo_id = :pid AND kind IN ('preview_800','thumb')");
+    $stmt->execute(['pid' => $photoId]);
+    $paths = array_map(fn($r) => (string)$r['path'], $stmt->fetchAll() ?: []);
+
+    $pdo->beginTransaction();
+    try {
+      // komentarze
+      $st = $pdo->prepare("DELETE FROM photo_comments WHERE photo_id = :pid");
+      $st->execute(['pid' => $photoId]);
+
+      // pliki (mapowanie)
+      $st = $pdo->prepare("DELETE FROM photo_files WHERE photo_id = :pid");
+      $st->execute(['pid' => $photoId]);
+
+      // rekord zdjęcia
+      $st = $pdo->prepare("DELETE FROM photos WHERE id = :pid");
+      $st->execute(['pid' => $photoId]);
+
+      $pdo->commit();
+    } catch (Throwable $e) {
+      $pdo->rollBack();
+      throw $e;
+    }
+
+    return ['album_id' => $albumId, 'delete_paths' => $paths];
+  }
+
+
 }

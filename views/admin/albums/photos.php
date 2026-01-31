@@ -55,7 +55,12 @@
             <?php if (isset($p['is_visible']) && (int)$p['is_visible'] !== 1): ?>
               <span class="pill" style="border-color:#6b6b75; color:#bdbdc6;">Ukryte</span>
             <?php endif; ?>
-          </div>
+          
+            <form method="post" action="/admin/photo/<?= $pid ?>/delete" class="delete-photo-form" style="margin-left:auto;">
+              <input type="hidden" name="csrf" value="<?= htmlspecialchars(Csrf::token(), ENT_QUOTES, 'UTF-8') ?>" />
+              <button type="submit" class="btn mini" style="border-color:#ff4d4f; color:#ff4d4f;">Usuń</button>
+            </form>
+</div>
 
           <div class="comment-line js-last-comment" id="last-comment-<?= $pid ?>">
             <?php if (!empty($p['last_comment_text'])): ?>
@@ -80,6 +85,12 @@
 
       document.addEventListener('submit', async (e) => {
         const form = e.target;
+        if (form.classList.contains('delete-photo-form')) {
+          if (!confirm('Usunąć to zdjęcie z albumu? (usunie wpisy w DB + preview/thumb)')) {
+            e.preventDefault();
+          }
+          return;
+        }
         if (!form.classList.contains('admin-comment-form')) return;
         e.preventDefault();
 

@@ -150,6 +150,10 @@ $router->post('/admin/photo/{id}/download-allowed', fn($p) => $adminPhoto->setDo
   RequireAuth::handle(),
   RequireRole::handle('admin'),
 ]);
+$router->post('/admin/photo/{id}/delete', fn($p) => $adminPhoto->delete($p), [
+  RequireAuth::handle(),
+  RequireRole::handle('admin'),
+]);
 
 $router->post('/admin/photo/{id}/comment', fn($p) => $adminPhotoActions->addComment($p), [
   RequireAuth::handle(),

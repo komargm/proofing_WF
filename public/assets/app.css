@@ -1,16 +1,58 @@
+/*
+  Global theme
+  - Keep the whole app in a readable dark UI.
+  - Avoid redefining core components (e.g. .card) later in the file.
+*/
 body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; margin: 0; background:#0b0b0c; color:#f2f2f2; }
-.container { max-width: 1100px; margin: 24px auto; padding: 0 16px; }
+.container { max-width: 1180px; margin: 24px auto; padding: 0 16px; }
 .topbar { display:flex; justify-content:space-between; align-items:center; padding: 14px 16px; background:#121214; position: sticky; top:0; z-index: 10; }
 .brand { font-weight: 700; letter-spacing: 0.3px; }
-.card { background:#141417; padding:16px; border-radius:14px; display:grid; gap:10px; }
-label { font-size: 14px; opacity: .85; }
-input { padding: 10px 12px; border-radius: 10px; border: 1px solid #2a2a2e; background:#0f0f12; color:#f2f2f2; }
-.btn { color:#f2f2f2; text-decoration:none; border:1px solid #2a2a2e; padding: 8px 12px; border-radius: 10px; display:inline-block; background: transparent; }
+.card { background:#141417; padding:16px; border-radius:14px; display:grid; gap:10px; border: 1px solid #232329; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+label { font-size: 14px; opacity: .92; color: rgba(242,242,242,.9); }
+input, textarea, select {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #2a2a2e;
+  background:#0f0f12;
+  color:#f2f2f2;
+  outline: none;
+}
+
+textarea{ min-height: 120px; resize: vertical; }
+
+input:focus, textarea:focus, select:focus{
+  border-color: rgba(120,170,255,.65);
+  box-shadow: 0 0 0 3px rgba(43,108,255,.18);
+}
+.btn {
+  color:#f2f2f2;
+  text-decoration:none;
+  border:1px solid #2a2a2e;
+  padding: 8px 12px;
+  border-radius: 10px;
+  display:inline-block;
+  background: rgba(255,255,255,.03);
+  cursor: pointer;
+}
+.btn:hover{ border-color: rgba(120,170,255,.55); background: rgba(255,255,255,.06); }
 .btn.primary { background:#2b6cff; border-color:#2b6cff; cursor:pointer; }
+.btn.primary:hover{ filter: brightness(1.05); }
+.btn.danger{ border-color: rgba(255,90,110,.45); background: rgba(255,90,110,.12); }
+.btn.danger:hover{ border-color: rgba(255,90,110,.75); background: rgba(255,90,110,.18); }
 .btn.mini { padding: 7px 10px; border-radius: 10px; font-size: 12px; }
-.alert { background:#311; border:1px solid #622; padding:10px 12px; border-radius: 10px; max-width: 420px; margin-bottom: 12px;}
-.muted { opacity:.7; font-size: 13px; margin: 0; }
-h1 { margin-top: 10px; }
+.alert { background: rgba(180,40,40,.18); border:1px solid rgba(255,90,110,.35); padding:10px 12px; border-radius: 12px; max-width: 520px; margin-bottom: 12px; }
+.muted { color: rgba(242,242,242,.65); font-size: 13px; margin: 0; }
+h1 { margin-top: 10px; font-size: 34px; letter-spacing: .2px; }
+h2 { margin: 12px 0 8px; font-size: 20px; }
+
+/* Tables */
+table { color: inherit; }
+thead th { font-weight: 650; color: rgba(242,242,242,.92); }
+tbody tr:hover { background: rgba(255,255,255,.03); }
+
+/* Small UI tokens */
+code{ background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.10); padding: 2px 8px; border-radius: 999px; color: rgba(210,230,255,.92); font-size: 12px; }
+.badge{ display:inline-block; padding: 6px 10px; border-radius: 999px; font-size: 12px; color:#fff; border: 1px solid rgba(255,255,255,.10); }
 
 .grid {
   display: grid;
@@ -43,6 +85,30 @@ a.card.album:hover { border-color: #2b6cff; }
   gap: 12px;
   margin: 12px 0 16px;
 }
+
+/* Tables (admin lists) */
+table{ width:100%; border-collapse: collapse; }
+thead th{
+  text-align:left;
+  font-size: 12px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: rgba(242,242,242,.78);
+  background: rgba(255,255,255,.04);
+  border-bottom: 1px solid #232329;
+  padding: 12px 14px;
+}
+tbody td{
+  border-bottom: 1px solid #232329;
+  padding: 12px 14px;
+  color: rgba(242,242,242,.92);
+}
+tbody tr:hover{ background: rgba(255,255,255,.03); }
+td .muted{ color: rgba(242,242,242,.70); }
+
+/* Make wide admin tables scroll nicely */
+.table-wrap{ overflow:auto; border: 1px solid #232329; border-radius: 14px; background:#141417; }
+.table-wrap table{ min-width: 860px; }
 
 /* Album photos grid */
 .photo-grid{
@@ -180,11 +246,7 @@ a.card.album:hover { border-color: #2b6cff; }
   margin: 8px 0 12px;
 }
 
-.viewer-image{
-  background:#111;
-  border-radius:12px;
-  padding:10px;
-}
+.viewer-image{ background:#0f0f12; border-radius:14px; padding:10px; border:1px solid #232329; }
 
 .viewer-image img{
   width:100%;
@@ -193,16 +255,17 @@ a.card.album:hover { border-color: #2b6cff; }
   border-radius:10px;
 }
 
-.card{
+/* NOTE: removed the old light-theme .card override (it made admin pages unreadable).
+   If you ever need a light panel, use .card.light explicitly in markup. */
+.card.light{
   background:#fff;
+  color:#111;
   border:1px solid #eee;
-  border-radius:12px;
-  padding:12px;
   box-shadow:0 2px 10px rgba(0,0,0,.04);
 }
 
 .row{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
-.divider{ height:1px; background:#eee; margin:12px 0; }
+.divider{ height:1px; background: rgba(255,255,255,.12); margin:12px 0; }
 
 .chat{
   max-height: 46vh;
@@ -214,13 +277,13 @@ a.card.album:hover { border-color: #2b6cff; }
 }
 
 .chat-msg{
-  border:1px solid #eee;
+  border:1px solid #232329;
   border-radius:12px;
   padding:10px;
-  background:#fafafa;
+  background: rgba(255,255,255,.03);
 }
 
-.chat-msg.from-admin{ background:#f4fbff; }
+.chat-msg.from-admin{ background: rgba(43,108,255,.12); border-color: rgba(120,170,255,.35); }
 .chat-meta{ display:flex; justify-content:space-between; gap:10px; margin-bottom:6px; }
 .chat-text{ white-space:pre-wrap; }
 

@@ -9,17 +9,18 @@ $usersRepo   = new UserRepository();
 $authService = new AuthService($usersRepo);
 
 $albumRepo = new AlbumRepository();
+$sectionRepo = new AlbumSectionRepository();
 $photoRepo = new PhotoRepository();
 $photoActionsRepo = new PhotoActionsRepository();
 $ingestRepo = new IngestRepository();
 
 $auth   = new AuthController($authService);
-$client = new ClientController($albumRepo, $photoRepo);
+$client = new ClientController($albumRepo, $sectionRepo, $photoRepo);
 $admin  = new AdminController();
 $adminUsers = new AdminUsersController($usersRepo);
 $ingest = new IngestWizardController($ingestRepo);
 
-$adminAlbums = new AdminAlbumsController($albumRepo, $photoRepo);
+$adminAlbums = new AdminAlbumsController($albumRepo, $sectionRepo, $photoRepo);
 $adminPhotoActionsRepo = new AdminPhotoActionsRepository();
 $adminPhotoActions = new AdminPhotoActionsController($adminPhotoActionsRepo);
 $adminPhoto = new AdminPhotoController($photoRepo);
@@ -115,6 +116,24 @@ $router->get('/admin/album/{id}/photos', fn($p) => $adminAlbums->photos($p), [
   RequireRole::handle('admin'),
 ]);
 
+// Admin: sekcje w albumie ("sub-albumy")
+$router->get('/admin/album/{id}/sections', fn($p) => $adminAlbums->sectionsPage($p), [
+  RequireAuth::handle(),
+  RequireRole::handle('admin'),
+]);
+$router->post('/admin/album/{id}/sections/create', fn($p) => $adminAlbums->sectionCreate($p), [
+  RequireAuth::handle(),
+  RequireRole::handle('admin'),
+]);
+$router->post('/admin/album/{id}/sections/{sid}/rename', fn($p) => $adminAlbums->sectionRename($p), [
+  RequireAuth::handle(),
+  RequireRole::handle('admin'),
+]);
+$router->post('/admin/album/{id}/sections/{sid}/delete', fn($p) => $adminAlbums->sectionDelete($p), [
+  RequireAuth::handle(),
+  RequireRole::handle('admin'),
+]);
+
 // Admin: Dodaj pojedyncze zdjęcie do istniejącego albumu (Pick from NAS)
 $router->get('/admin/album/{id}/add-photo', fn($p) => $adminAlbums->addPhotoPage($p), [
   RequireAuth::handle(),
@@ -142,6 +161,11 @@ $router->get('/admin/album/{id}/add-photo/stream/{job}', fn($p) => $adminAlbums-
 ]);
 
 $router->get('/admin/photo/{id}', fn($p) => $adminPhoto->photo($p), [
+  RequireAuth::handle(),
+  RequireRole::handle('admin'),
+]);
+
+$router->post('/admin/photo/{id}/set-section', fn($p) => $adminPhoto->setSection($p), [
   RequireAuth::handle(),
   RequireRole::handle('admin'),
 ]);

@@ -28,6 +28,7 @@ require_once __DIR__ . '/Middlewares/RequireRole.php';
 
 require_once __DIR__ . '/Repositories/UserRepository.php';
 require_once __DIR__ . '/Repositories/AlbumRepository.php';
+require_once __DIR__ . '/Repositories/AlbumSectionRepository.php';
 require_once __DIR__ . '/Repositories/PhotoRepository.php';
 require_once __DIR__ . '/Repositories/PhotoActionsRepository.php';
 require_once __DIR__ . '/Repositories/AdminPhotoActionsRepository.php';

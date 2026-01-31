@@ -9,11 +9,12 @@ final class PhotoRepository {
    *
    * @return array<int, array<string, mixed>>
    */
-  public function listForUserAlbum(int $userId, int $albumId): array {
+  public function listForUserAlbum(int $userId, int $albumId, ?int $sectionId = null): array {
     $sql = "
       SELECT
         p.id,
         p.sort_order,
+        p.section_id,
         p.client_rating,
         p.client_selected_at,
         p.download_allowed_at,
@@ -26,6 +27,7 @@ final class PhotoRepository {
 
       FROM user_album_access uaa
       JOIN photos p ON p.album_id = uaa.album_id
+      LEFT JOIN album_sections s ON s.id = p.section_id
       LEFT JOIN photo_files tf ON tf.photo_id = p.id AND tf.kind = 'thumb'
       LEFT JOIN photo_files pf ON pf.photo_id = p.id AND pf.kind = 'preview_800'
       LEFT JOIN (
@@ -43,12 +45,15 @@ final class PhotoRepository {
       WHERE uaa.user_id = :uid
         AND uaa.album_id = :aid
         AND p.is_visible = 1
+        " . ($sectionId !== null ? " AND p.section_id = :sid " : "") . "
 
       ORDER BY p.sort_order ASC, p.id ASC
     ";
 
     $stmt = db()->prepare($sql);
-    $stmt->execute(['uid' => $userId, 'aid' => $albumId]);
+    $bind = ['uid' => $userId, 'aid' => $albumId];
+    if ($sectionId !== null) $bind['sid'] = $sectionId;
+    $stmt->execute($bind);
     return $stmt->fetchAll() ?: [];
   }
 
@@ -73,11 +78,12 @@ final class PhotoRepository {
   }
 
   /** @return array<int, array<string, mixed>> */
-  public function listForAdminAlbum(int $albumId): array {
+  public function listForAdminAlbum(int $albumId, ?int $sectionId = null): array {
     $sql = "
       SELECT
         p.id,
         p.sort_order,
+        p.section_id,
         p.client_rating,
         p.client_selected_at,
         p.download_allowed_at,
@@ -90,6 +96,7 @@ final class PhotoRepository {
         lc.created_at   AS last_comment_at
 
       FROM photos p
+      LEFT JOIN album_sections s ON s.id = p.section_id
       LEFT JOIN photo_files tf ON tf.photo_id = p.id AND tf.kind = 'thumb'
       LEFT JOIN photo_files pf ON pf.photo_id = p.id AND pf.kind = 'preview_800'
       LEFT JOIN (
@@ -105,11 +112,33 @@ final class PhotoRepository {
       ) lc ON lc.photo_id = p.id
 
       WHERE p.album_id = :aid
+        " . ($sectionId !== null ? " AND p.section_id = :sid " : "") . "
       ORDER BY p.sort_order ASC, p.id ASC
     ";
     $stmt = db()->prepare($sql);
-    $stmt->execute(['aid' => $albumId]);
+    $bind = ['aid' => $albumId];
+    if ($sectionId !== null) $bind['sid'] = $sectionId;
+    $stmt->execute($bind);
     return $stmt->fetchAll() ?: [];
+  }
+
+  public function setSection(int $photoId, ?int $sectionId): void {
+    if ($sectionId !== null && $sectionId <= 0) $sectionId = null;
+    $sql = "UPDATE photos SET section_id = :sid WHERE id = :pid";
+    $st = db()->prepare($sql);
+    $st->execute(['sid' => $sectionId, 'pid' => $photoId]);
+  }
+
+  /** @param array<int,int> $photoIds */
+  public function bulkSetSection(array $photoIds, ?int $sectionId): void {
+    if (empty($photoIds)) return;
+    if ($sectionId !== null && $sectionId <= 0) $sectionId = null;
+
+    $in = implode(',', array_fill(0, count($photoIds), '?'));
+    $sql = "UPDATE photos SET section_id = ? WHERE id IN ($in)";
+    $st = db()->prepare($sql);
+    $params = array_merge([$sectionId], array_values(array_map('intval', $photoIds)));
+    $st->execute($params);
   }
 
   public function filePathForAdmin(int $photoId, string $kind): ?string {
@@ -157,12 +186,13 @@ final class PhotoRepository {
 
 
 
-  public function viewerForUser(int $userId, int $photoId): ?array {
+  public function viewerForUser(int $userId, int $photoId, ?int $sectionId = null): ?array {
     $sql = "
       SELECT
         p.id,
         p.album_id,
         p.sort_order,
+        p.section_id,
         p.client_rating,
         p.client_selected_at,
         p.download_allowed_at,
@@ -189,8 +219,15 @@ final class PhotoRepository {
     $row = $stmt->fetch();
     if (!$row) return null;
 
+    // Jeśli przekazano sekcję w URL, ale zdjęcie nie należy do tej sekcji,
+    // ignorujemy filtr, żeby nawigacja prev/next nie była pusta.
+    if ($sectionId !== null && (int)($row['section_id'] ?? 0) !== $sectionId) {
+      $sectionId = null;
+    }
+
     $albumId = (int)$row['album_id'];
     $sortOrder = (int)$row['sort_order'];
+    // (sekcja) – już wyżej normalizujemy $sectionId, tu nie blokujemy podglądu
 
     $sqlPrev = "
       SELECT p2.id
@@ -199,12 +236,15 @@ final class PhotoRepository {
       WHERE uaa.user_id = :uid
         AND uaa.album_id = :aid
         AND p2.is_visible = 1
+        " . ($sectionId !== null ? " AND p2.section_id = :sid " : "") . "
         AND (p2.sort_order < :s1 OR (p2.sort_order = :s2 AND p2.id < :pid))
       ORDER BY p2.sort_order DESC, p2.id DESC
       LIMIT 1
     ";
     $st = db()->prepare($sqlPrev);
-    $st->execute(['uid' => $userId, 'aid' => $albumId, 's1' => $sortOrder, 's2' => $sortOrder, 'pid' => $photoId]);
+    $bindPrev = ['uid' => $userId, 'aid' => $albumId, 's1' => $sortOrder, 's2' => $sortOrder, 'pid' => $photoId];
+    if ($sectionId !== null) $bindPrev['sid'] = $sectionId;
+    $st->execute($bindPrev);
     $prevId = (int)($st->fetchColumn() ?: 0);
 
     $sqlNext = "
@@ -214,12 +254,15 @@ final class PhotoRepository {
       WHERE uaa.user_id = :uid
         AND uaa.album_id = :aid
         AND p2.is_visible = 1
+        " . ($sectionId !== null ? " AND p2.section_id = :sid " : "") . "
         AND (p2.sort_order > :s1 OR (p2.sort_order = :s2 AND p2.id > :pid))
       ORDER BY p2.sort_order ASC, p2.id ASC
       LIMIT 1
     ";
     $st = db()->prepare($sqlNext);
-    $st->execute(['uid' => $userId, 'aid' => $albumId, 's1' => $sortOrder, 's2' => $sortOrder, 'pid' => $photoId]);
+    $bindNext = ['uid' => $userId, 'aid' => $albumId, 's1' => $sortOrder, 's2' => $sortOrder, 'pid' => $photoId];
+    if ($sectionId !== null) $bindNext['sid'] = $sectionId;
+    $st->execute($bindNext);
     $nextId = (int)($st->fetchColumn() ?: 0);
 
     $sqlC = "
@@ -250,6 +293,7 @@ final class PhotoRepository {
         'id' => (int)$row['id'],
         'album_id' => $albumId,
         'sort_order' => $sortOrder,
+        'section_id' => $photoSectionId,
         'client_rating' => $row['client_rating'] !== null ? (int)$row['client_rating'] : null,
         'client_selected_at' => $row['client_selected_at'],
         'download_allowed_at' => $row['download_allowed_at'],
@@ -265,6 +309,7 @@ final class PhotoRepository {
       'nav' => [
         'prev_id' => $prevId > 0 ? $prevId : null,
         'next_id' => $nextId > 0 ? $nextId : null,
+        'section_id' => $sectionId,
       ],
       'comments' => $comments,
     ];
@@ -272,12 +317,13 @@ final class PhotoRepository {
 
 
 
-  public function viewerForAdmin(int $photoId): ?array {
+  public function viewerForAdmin(int $photoId, ?int $sectionId = null): ?array {
     $sql = "
       SELECT
         p.id,
         p.album_id,
         p.sort_order,
+        p.section_id,
         p.client_rating,
         p.client_selected_at,
         p.download_allowed_at,
@@ -301,6 +347,10 @@ final class PhotoRepository {
     $row = $stmt->fetch();
     if (!$row) return null;
 
+    if ($sectionId !== null && (int)($row['section_id'] ?? 0) !== $sectionId) {
+      $sectionId = null;
+    }
+
     $albumId = (int)$row['album_id'];
     $sortOrder = (int)$row['sort_order'];
 
@@ -309,12 +359,15 @@ final class PhotoRepository {
       FROM photos p2
       WHERE p2.album_id = :aid
         AND p2.is_visible = 1
+        " . ($sectionId !== null ? " AND p2.section_id = :sid " : "") . "
         AND (p2.sort_order < :s1 OR (p2.sort_order = :s2 AND p2.id < :pid))
       ORDER BY p2.sort_order DESC, p2.id DESC
       LIMIT 1
     ";
     $st = db()->prepare($sqlPrev);
-    $st->execute(['aid' => $albumId, 's1' => $sortOrder, 's2' => $sortOrder, 'pid' => $photoId]);
+    $bindPrev = ['aid' => $albumId, 's1' => $sortOrder, 's2' => $sortOrder, 'pid' => $photoId];
+    if ($sectionId !== null) $bindPrev['sid'] = $sectionId;
+    $st->execute($bindPrev);
     $prevId = (int)($st->fetchColumn() ?: 0);
 
     $sqlNext = "
@@ -322,12 +375,15 @@ final class PhotoRepository {
       FROM photos p2
       WHERE p2.album_id = :aid
         AND p2.is_visible = 1
+        " . ($sectionId !== null ? " AND p2.section_id = :sid " : "") . "
         AND (p2.sort_order > :s1 OR (p2.sort_order = :s2 AND p2.id > :pid))
       ORDER BY p2.sort_order ASC, p2.id ASC
       LIMIT 1
     ";
     $st = db()->prepare($sqlNext);
-    $st->execute(['aid' => $albumId, 's1' => $sortOrder, 's2' => $sortOrder, 'pid' => $photoId]);
+    $bindNext = ['aid' => $albumId, 's1' => $sortOrder, 's2' => $sortOrder, 'pid' => $photoId];
+    if ($sectionId !== null) $bindNext['sid'] = $sectionId;
+    $st->execute($bindNext);
     $nextId = (int)($st->fetchColumn() ?: 0);
 
     $sqlC = "
@@ -358,6 +414,7 @@ final class PhotoRepository {
         'id' => (int)$row['id'],
         'album_id' => $albumId,
         'sort_order' => $sortOrder,
+        'section_id' => $row['section_id'] !== null ? (int)$row['section_id'] : null,
         'client_rating' => $row['client_rating'] !== null ? (int)$row['client_rating'] : null,
         'client_selected_at' => $row['client_selected_at'],
         'download_allowed_at' => $row['download_allowed_at'],
@@ -373,6 +430,7 @@ final class PhotoRepository {
       'nav' => [
         'prev_id' => $prevId > 0 ? $prevId : null,
         'next_id' => $nextId > 0 ? $nextId : null,
+        'section_id' => $sectionId,
       ],
       'comments' => $comments,
     ];

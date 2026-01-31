@@ -3,8 +3,11 @@
 <?php /** @var array<string,mixed> $nav */ ?>
 <?php /** @var array<int,array<string,mixed>> $comments */ ?>
 
+<?php $sid = $nav['section_id'] ?? null; ?>
+<?php $qs = ($sid !== null && (int)$sid > 0) ? ('?section='.(int)$sid) : ''; ?>
+
 <div style="margin: 12px 0; display:flex; gap:12px; flex-wrap:wrap;">
-  <a class="btn" href="/admin/album/<?= (int)$album['id'] ?>/photos">← Wróć do zdjęć albumu</a>
+  <a class="btn" href="/admin/album/<?= (int)$album['id'] ?>/photos<?= $qs ?>">← Wróć do zdjęć albumu</a>
   <a class="btn" href="/admin/albums">Lista albumów</a>
   <a class="btn" href="/admin/dashboard">Dashboard</a>
   <form method="post" action="/admin/photo/<?= (int)$photo['id'] ?>/delete" style="display:inline;" onsubmit="return confirm('Usunąć to zdjęcie? (usunie wpisy w DB + preview/thumb)');">
@@ -21,13 +24,13 @@
   <div class="viewer-left">
     <div class="viewer-nav">
       <?php if (!empty($nav['prev_id'])): ?>
-        <a class="btn" href="/admin/photo/<?= (int)$nav['prev_id'] ?>">← Poprzednie</a>
+        <a class="btn" href="/admin/photo/<?= (int)$nav['prev_id'] ?><?= $qs ?>">← Poprzednie</a>
       <?php else: ?>
         <span class="btn ghost disabled">← Poprzednie</span>
       <?php endif; ?>
 
       <?php if (!empty($nav['next_id'])): ?>
-        <a class="btn" href="/admin/photo/<?= (int)$nav['next_id'] ?>">Następne →</a>
+        <a class="btn" href="/admin/photo/<?= (int)$nav['next_id'] ?><?= $qs ?>">Następne →</a>
       <?php else: ?>
         <span class="btn ghost disabled">Następne →</span>
       <?php endif; ?>

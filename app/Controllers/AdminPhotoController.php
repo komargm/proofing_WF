@@ -10,7 +10,10 @@ final class AdminPhotoController {
       Response::html('Bad Request', 400);
     }
 
-    $data = $this->photos->viewerForAdmin($photoId);
+    $sectionId = isset($_GET['section']) ? (int)$_GET['section'] : null;
+    if ($sectionId !== null && $sectionId <= 0) $sectionId = null;
+
+    $data = $this->photos->viewerForAdmin($photoId, $sectionId);
     if (!$data) {
       Response::html('Not Found', 404);
     }
@@ -28,6 +31,24 @@ final class AdminPhotoController {
     $this->photos->setDownloadAllowed($photoId, $allowed === 1);
 
     Response::json(['ok' => true, 'allowed' => ($allowed === 1)]);
+  }
+
+  public function setSection(array $params): void {
+    $photoId = isset($params['id']) ? (int)$params['id'] : 0;
+    if ($photoId <= 0) {
+      Response::json(['ok' => false, 'error' => 'Bad Request'], 400);
+    }
+
+    Csrf::validate();
+
+    $payload = json_decode((string)file_get_contents('php://input'), true) ?: [];
+    $sid = $payload['section_id'] ?? null;
+    if ($sid === '' || $sid === false) $sid = null;
+    if ($sid !== null) $sid = (int)$sid;
+    if ($sid !== null && $sid <= 0) $sid = null;
+
+    $this->photos->setSection($photoId, $sid);
+    Response::json(['ok' => true, 'section_id' => $sid]);
   }
   public function delete(array $params): void {
     $photoId = isset($params['id']) ? (int)$params['id'] : 0;

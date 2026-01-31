@@ -4,6 +4,7 @@ declare(strict_types=1);
 final class AdminAlbumsController {
   public function __construct(
     private AlbumRepository $albums,
+    private AlbumSectionRepository $sections,
     private PhotoRepository $photos,
   ) {}
 
@@ -46,11 +47,91 @@ final class AdminAlbumsController {
     $album = $this->albums->findById($id);
     if (!$album) Response::html('Not Found', 404);
 
-    $photos = $this->photos->listForAdminAlbum($id);
+    $sectionId = isset($_GET['section']) ? (int)$_GET['section'] : null;
+    if ($sectionId !== null && $sectionId <= 0) $sectionId = null;
+
+    $sections = $this->sections->listForAlbum($id);
+    $photos = $this->photos->listForAdminAlbum($id, $sectionId);
     Response::html(View::page('admin/albums/photos', [
       'album' => $album,
+      'sections' => $sections,
+      'section_id' => $sectionId,
       'photos' => $photos,
     ]));
+  }
+
+  // =========================================================
+  // Sections ("sub-albumy")
+  // =========================================================
+
+  public function sectionsPage(array $params): void {
+    $albumId = isset($params['id']) ? (int)$params['id'] : 0;
+    if ($albumId <= 0) Response::html('Bad Request', 400);
+
+    $album = $this->albums->findById($albumId);
+    if (!$album) Response::html('Not Found', 404);
+
+    $sections = $this->sections->listForAlbum($albumId);
+
+    Response::html(View::page('admin/albums/sections', [
+      'album' => $album,
+      'sections' => $sections,
+      'csrf' => Csrf::token(),
+    ]));
+  }
+
+  public function sectionCreate(array $params): void {
+    $albumId = isset($params['id']) ? (int)$params['id'] : 0;
+    if ($albumId <= 0) Response::html('Bad Request', 400);
+    Csrf::verifyOrFail($_POST['csrf'] ?? null);
+
+    $title = (string)($_POST['title'] ?? '');
+    try {
+      $this->sections->create($albumId, $title);
+      $_SESSION['flash_success'] = 'Dodano sekcję.';
+    } catch (Throwable $e) {
+      $_SESSION['flash_error'] = 'Nie udało się dodać sekcji: ' . $e->getMessage();
+    }
+
+    Response::redirect("/admin/album/{$albumId}/sections");
+  }
+
+  public function sectionRename(array $params): void {
+    $albumId = isset($params['id']) ? (int)$params['id'] : 0;
+    $sectionId = isset($params['sid']) ? (int)$params['sid'] : 0;
+    if ($albumId <= 0 || $sectionId <= 0) Response::html('Bad Request', 400);
+    Csrf::verifyOrFail($_POST['csrf'] ?? null);
+
+    $title = (string)($_POST['title'] ?? '');
+    $sec = $this->sections->findById($sectionId);
+    if (!$sec || (int)$sec['album_id'] !== $albumId) {
+      Response::html('Not Found', 404);
+    }
+
+    try {
+      $this->sections->rename($sectionId, $title);
+      $_SESSION['flash_success'] = 'Zmieniono nazwę sekcji.';
+    } catch (Throwable $e) {
+      $_SESSION['flash_error'] = 'Nie udało się zmienić nazwy: ' . $e->getMessage();
+    }
+    Response::redirect("/admin/album/{$albumId}/sections");
+  }
+
+  public function sectionDelete(array $params): void {
+    $albumId = isset($params['id']) ? (int)$params['id'] : 0;
+    $sectionId = isset($params['sid']) ? (int)$params['sid'] : 0;
+    if ($albumId <= 0 || $sectionId <= 0) Response::html('Bad Request', 400);
+    Csrf::verifyOrFail($_POST['csrf'] ?? null);
+
+    $sec = $this->sections->findById($sectionId);
+    if (!$sec || (int)$sec['album_id'] !== $albumId) {
+      Response::html('Not Found', 404);
+    }
+
+    // Uwaga: FK w photos ustawia section_id = NULL (ON DELETE SET NULL)
+    $this->sections->delete($sectionId);
+    $_SESSION['flash_success'] = 'Usunięto sekcję.';
+    Response::redirect("/admin/album/{$albumId}/sections");
   }
 
   /**

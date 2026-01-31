@@ -1,9 +1,23 @@
 <?php /** @var array<string,mixed> $photo */ ?>
 <?php /** @var array<string,mixed> $album */ ?>
 <?php /** @var array<string,mixed> $nav */ ?>
+<?php /** @var array<int,array<string,mixed>> $sections */ ?>
 <?php /** @var array<int,array<string,mixed>> $comments */ ?>
 
-<a class="btn" href="/client/album/<?= (int)$album['id'] ?>">← Wróć do albumu</a>
+<?php $sid = $nav['section_id'] ?? null; ?>
+<?php $qs = ($sid !== null && (int)$sid > 0) ? ('?section='.(int)$sid) : ''; ?>
+<?php
+  $secTitle = '';
+  if ($sid !== null && (int)$sid > 0) {
+    foreach ($sections as $s) {
+      if ((int)$s['id'] === (int)$sid) {
+        $secTitle = (string)($s['title'] ?? '');
+        break;
+      }
+    }
+  }
+?>
+<a class="btn" href="/client/album/<?= (int)$album['id'] ?><?= $qs ?>">← Wróć do albumu</a>
 
 <h1><?= htmlspecialchars((string)$album['title'], ENT_QUOTES, 'UTF-8') ?></h1>
 <p class="muted">Data albumu: <?= htmlspecialchars((string)$album['created_at'], ENT_QUOTES, 'UTF-8') ?></p>
@@ -12,13 +26,13 @@
   <div class="viewer-left">
     <div class="viewer-nav">
       <?php if (!empty($nav['prev_id'])): ?>
-        <a class="btn" href="/client/photo/<?= (int)$nav['prev_id'] ?>">← Poprzednie</a>
+        <a class="btn" href="/client/photo/<?= (int)$nav['prev_id'] ?><?= $qs ?>">← Poprzednie</a>
       <?php else: ?>
         <span class="btn ghost disabled">← Poprzednie</span>
       <?php endif; ?>
 
       <?php if (!empty($nav['next_id'])): ?>
-        <a class="btn" href="/client/photo/<?= (int)$nav['next_id'] ?>">Następne →</a>
+        <a class="btn" href="/client/photo/<?= (int)$nav['next_id'] ?><?= $qs ?>">Następne →</a>
       <?php else: ?>
         <span class="btn ghost disabled">Następne →</span>
       <?php endif; ?>
@@ -33,6 +47,9 @@
     <div class="card">
       <div class="row">
         <span class="pill">ID zdjęcia: <?= (int)$photo['id'] ?></span>
+        <?php if ($secTitle !== ''): ?>
+          <span class="pill" style="border-color:#3b82f6; color:#93c5fd;">Sekcja: <?= htmlspecialchars($secTitle, ENT_QUOTES, 'UTF-8') ?></span>
+        <?php endif; ?>
       </div>
 
       <p class="muted">Data dodania: <?= htmlspecialchars((string)$photo['photo_created_at'], ENT_QUOTES, 'UTF-8') ?></p>

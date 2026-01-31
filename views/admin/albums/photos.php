@@ -1,11 +1,14 @@
 <?php /** @var array<string,mixed> $album */ ?>
 <?php /** @var array<int,array<string,mixed>> $photos */ ?>
+<?php /** @var array<int,array<string,mixed>> $sections */ ?>
+<?php /** @var ?int $section_id */ ?>
 
 <h1>Podgląd albumu</h1>
 
 <div style="margin: 16px 0; display:flex; gap:12px; flex-wrap:wrap;">
   <a class="btn" href="/admin/albums">← Lista albumów</a>
   <a class="btn" href="/admin/album/<?= (int)$album['id'] ?>/edit">Ustawienia</a>
+  <a class="btn" href="/admin/album/<?= (int)$album['id'] ?>/sections">Sekcje</a>
   <a class="btn" href="/admin/dashboard">Dashboard</a>
 </div>
 
@@ -13,6 +16,17 @@
   <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
     <div><strong><?= htmlspecialchars((string)$album['title'], ENT_QUOTES, 'UTF-8') ?></strong></div>
     <div class="muted">Zdjęcia: <?= count($photos) ?></div>
+    <div style="margin-left:auto; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+      <label class="muted" for="js-section-filter">Sekcja:</label>
+      <select id="js-section-filter" class="input" style="max-width:260px;">
+        <option value="">Wszystko</option>
+        <?php foreach ($sections as $s): ?>
+          <option value="<?= (int)$s['id'] ?>" <?= (isset($section_id) && (int)$section_id === (int)$s['id']) ? 'selected' : '' ?>>
+            <?= htmlspecialchars((string)$s['title'], ENT_QUOTES, 'UTF-8') ?>
+          </option>
+        <?php endforeach; ?>
+      </select>
+    </div>
   </div>
   <?php if (!empty($album['album_comment'])): ?>
     <div class="muted" style="margin-top:8px; white-space:pre-wrap;">
@@ -28,7 +42,7 @@
     <?php foreach ($photos as $p): ?>
       <?php $pid = (int)$p['id']; ?>
       <div class="photo-tile" data-photo-id="<?= $pid ?>">
-        <a class="photo-img" href="/admin/photo/<?= $pid ?>">
+        <a class="photo-img" href="/admin/photo/<?= $pid ?><?= isset($section_id) && $section_id ? ('?section='.(int)$section_id) : '' ?>">
           <?php if (!empty($p['thumb_path'])): ?>
             <img loading="lazy" alt="thumb" src="/media/photo/<?= $pid ?>/thumb" />
           <?php else: ?>
@@ -60,8 +74,22 @@
               <input type="hidden" name="csrf" value="<?= htmlspecialchars(Csrf::token(), ENT_QUOTES, 'UTF-8') ?>" />
               <button type="submit" class="btn mini" style="border-color:#ff4d4f; color:#ff4d4f;">Usuń</button>
             </form>
-</div>
 
+          </div>
+
+          <div style="margin:8px 0; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <label class="muted" style="min-width:70px;">Sekcja:</label>
+            <select class="input js-photo-section" data-photo-id="<?= $pid ?>" style="max-width:220px;">
+              <option value="">— brak —</option>
+              <?php foreach ($sections as $s): ?>
+                <option value="<?= (int)$s['id'] ?>" <?= (!empty($p['section_id']) && (int)$p['section_id'] === (int)$s['id']) ? 'selected' : '' ?>>
+                  <?= htmlspecialchars((string)$s['title'], ENT_QUOTES, 'UTF-8') ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+
+          <div class="muted" style="font-size:12px; margin-top:-2px;">Zmiana zapisuje się od razu.</div>
           <div class="comment-line js-last-comment" id="last-comment-<?= $pid ?>">
             <?php if (!empty($p['last_comment_text'])): ?>
               <?= htmlspecialchars((string)$p['last_comment_text'], ENT_QUOTES, 'UTF-8') ?>
@@ -82,6 +110,43 @@
   <script>
     (() => {
       const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+      const sel = document.getElementById('js-section-filter');
+      if (sel) {
+        sel.addEventListener('change', () => {
+          const v = sel.value;
+          const base = `/admin/album/<?= (int)$album['id'] ?>/photos`;
+          window.location.href = v ? `${base}?section=${encodeURIComponent(v)}` : base;
+        });
+      }
+
+      // szybkie przypisanie sekcji do zdjęcia
+      document.addEventListener('change', async (e) => {
+        const el = e.target;
+        if (!el || !el.classList || !el.classList.contains('js-photo-section')) return;
+        const pid = el.getAttribute('data-photo-id');
+        const sid = el.value;
+        if (!pid) return;
+
+        try {
+          el.disabled = true;
+          const res = await fetch(`/admin/photo/${pid}/set-section`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-Token': csrf,
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({ section_id: sid === '' ? null : parseInt(sid, 10) })
+          });
+          const json = await res.json().catch(() => null);
+          if (!res.ok || !json || json.ok !== true) {
+            alert('Nie udało się zapisać sekcji.');
+          }
+        } finally {
+          el.disabled = false;
+        }
+      });
 
       document.addEventListener('submit', async (e) => {
         const form = e.target;

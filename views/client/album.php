@@ -5,6 +5,17 @@
 
 <div class="toolbar">
   <div class="muted">Zdjęcia: <?= (int)$count ?></div>
+  <div style="margin-left:auto; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+    <label class="muted" for="js-section-filter">Sekcja:</label>
+    <select id="js-section-filter" class="input" style="max-width:260px;">
+      <option value="">Wszystko</option>
+      <?php foreach (($sections ?? []) as $s): ?>
+        <option value="<?= (int)$s['id'] ?>" <?= (!empty($section_id) && (int)$section_id === (int)$s['id']) ? 'selected' : '' ?>>
+          <?= htmlspecialchars((string)$s['title'], ENT_QUOTES, 'UTF-8') ?>
+        </option>
+      <?php endforeach; ?>
+    </select>
+  </div>
   <div class="muted">Kliknij ♥, ustaw ocenę, dodaj komentarz.</div>
 </div>
 
@@ -15,7 +26,7 @@
     <?php foreach ($photos as $p): ?>
       <?php $pid = (int)$p['id']; ?>
       <div class="photo-tile" data-photo-id="<?= $pid ?>">
-        <a class="photo-img" href="/client/photo/<?= $pid ?>">
+        <a class="photo-img" href="/client/photo/<?= $pid ?><?= !empty($section_id) ? ('?section='.(int)$section_id) : '' ?>">
           <?php if (!empty($p['thumb_path'])): ?>
             <img loading="lazy" alt="thumb" src="/media/photo/<?= $pid ?>/thumb" />
           <?php else: ?>
@@ -64,3 +75,15 @@
     <?php endforeach; ?>
   </div>
 <?php endif; ?>
+
+<script>
+  (() => {
+    const sel = document.getElementById('js-section-filter');
+    if (!sel) return;
+    sel.addEventListener('change', () => {
+      const v = sel.value;
+      const base = `/client/album/<?= (int)$album['id'] ?>`;
+      window.location.href = v ? `${base}?section=${encodeURIComponent(v)}` : base;
+    });
+  })();
+</script>

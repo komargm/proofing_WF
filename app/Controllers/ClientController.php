@@ -4,6 +4,7 @@ declare(strict_types=1);
 final class ClientController {
   public function __construct(
     private AlbumRepository $albums,
+    private AlbumSectionRepository $sections,
     private PhotoRepository $photos,
   ) {}
 
@@ -30,10 +31,16 @@ final class ClientController {
       Response::html('Forbidden', 403);
     }
 
-    $photos = $this->photos->listForUserAlbum($userId, $albumId);
+    $sectionId = isset($_GET['section']) ? (int)$_GET['section'] : null;
+    if ($sectionId !== null && $sectionId <= 0) $sectionId = null;
+
+    $sections = $this->sections->listForAlbum($albumId);
+    $photos = $this->photos->listForUserAlbum($userId, $albumId, $sectionId);
 
     Response::html(View::page('client/album', [
       'album' => $album,
+      'sections' => $sections,
+      'section_id' => $sectionId,
       'photos' => $photos,
       'count' => count($photos),
     ]));
@@ -47,10 +54,15 @@ final class ClientController {
       Response::html('Bad Request', 400);
     }
 
-    $data = $this->photos->viewerForUser($userId, $photoId);
+    $sectionId = isset($_GET['section']) ? (int)$_GET['section'] : null;
+    if ($sectionId !== null && $sectionId <= 0) $sectionId = null;
+
+    $data = $this->photos->viewerForUser($userId, $photoId, $sectionId);
     if (!$data) {
       Response::html('Forbidden', 403);
     }
+
+    $data['sections'] = $this->sections->listForAlbum((int)($data['album']['id'] ?? 0));
 
     Response::html(View::page('client/photo', $data));
   }

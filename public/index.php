@@ -64,11 +64,12 @@ $router->post('/client/photo/{id}/comment', fn($params) => $clientActions->addCo
   RequireRole::handle('client'),
 ]);
 
-$router->get('/media/photo/{id}/{kind}', fn($params) => $media->photoFile($params), [
+$router->get('/media/photo/{id}/original', fn($params) => $media->downloadOriginal($params), [
   RequireAuth::handle(),
   RequireRole::handleAny(['client','admin']),
 ]);
-$router->get('/media/photo/{id}/original', fn($params) => $media->downloadOriginal($params), [
+
+$router->get('/media/photo/{id}/{kind}', fn($params) => $media->photoFile($params), [
   RequireAuth::handle(),
   RequireRole::handleAny(['client','admin']),
 ]);

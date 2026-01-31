@@ -33,9 +33,6 @@
     <div class="card">
       <div class="row">
         <span class="pill">ID zdjęcia: <?= (int)$photo['id'] ?></span>
-        <?php if (!empty($photo['original_basename'])): ?>
-          <span class="pill blue"><?= htmlspecialchars((string)$photo['original_basename'], ENT_QUOTES, 'UTF-8') ?></span>
-        <?php endif; ?>
       </div>
 
       <p class="muted">Data dodania: <?= htmlspecialchars((string)$photo['photo_created_at'], ENT_QUOTES, 'UTF-8') ?></p>

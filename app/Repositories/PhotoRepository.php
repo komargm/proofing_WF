@@ -293,7 +293,7 @@ final class PhotoRepository {
         'id' => (int)$row['id'],
         'album_id' => $albumId,
         'sort_order' => $sortOrder,
-        'section_id' => $photoSectionId,
+        'section_id' => isset($row['section_id']) ? (int)$row['section_id'] : null,
         'client_rating' => $row['client_rating'] !== null ? (int)$row['client_rating'] : null,
         'client_selected_at' => $row['client_selected_at'],
         'download_allowed_at' => $row['download_allowed_at'],

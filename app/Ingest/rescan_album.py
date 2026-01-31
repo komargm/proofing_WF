@@ -1,16 +1,9 @@
 #!/usr/bin/env python3
 """WhisperedFrames Rescan Worker
 
-Uruchamiany z poziomu panelu admina dla konkretnego albumu.
-
-Wejście: manifest JSON wygenerowany przez PHP, zawierający tylko te zdjęcia,
-których plik oryginalny (mtime/rozmiar) różni się od zapisanych metadanych w DB.
-
-Dla każdego item:
- - nadpisuje preview_800 oraz thumb
- - watermark zostaje (jeżeli watermark=True w manifeście)
-
-Uwaga: skrypt NIE usuwa niczego i NIE dotyka oryginałów.
+Regeneruje preview + thumb dla wskazanych zdjęć z manifestu.
+Obsługuje EXIF Orientation.
+Watermark (PNG) nakłada tylko na preview.
 """
 
 import argparse
@@ -21,6 +14,13 @@ from datetime import datetime
 from typing import Optional
 
 from PIL import Image, ImageOps
+
+
+# ======= Twoje ustawienia =======
+WIDTH_RATIO = 0.80
+OPACITY     = 0.7
+WHITE_CUT   = 245
+# ================================
 
 
 def log(msg: str):
@@ -46,12 +46,6 @@ def resize_max(img: Image.Image, max_side: int) -> Image.Image:
 
 
 def _resolve_watermark_path(explicit_path: Optional[str] = None) -> str:
-    """
-    Priorytet:
-    1) explicit_path (jeśli podasz)
-    2) watermark.png w katalogu skryptu
-    3) /var/www/html/watermark.png
-    """
     if explicit_path and os.path.isfile(explicit_path):
         return explicit_path
 
@@ -64,49 +58,55 @@ def _resolve_watermark_path(explicit_path: Optional[str] = None) -> str:
     if os.path.isfile(p2):
         return p2
 
-    raise FileNotFoundError(
-        "Nie znaleziono pliku watermark.png (szukałem: katalog skryptu oraz /var/www/html/watermark.png)"
-    )
+    raise FileNotFoundError(f"Nie znaleziono watermark.png (szukałem: {p1} oraz {p2})")
 
 
-def apply_watermark_image(
-    img: Image.Image,
-    watermark_path: Optional[str] = None,
-    width_ratio: float = 0.75,   # docelowo 3/4 szerokości zdjęcia
-    opacity: float = 0.20,       # 0..1
-) -> Image.Image:
-    """
-    Nakłada PNG jako watermark na środek zdjęcia.
-    - width_ratio: jaką część szerokości zdjęcia ma zajmować watermark (np. 0.75)
-    - opacity: globalna przezroczystość watermarka (0..1)
-    """
-    wm_path = _resolve_watermark_path(watermark_path)
+def _alpha_from_luma(wm_rgb: Image.Image, opacity: float, white_cut: int) -> Image.Image:
+    opacity = max(0.0, min(1.0, opacity))
+    gray = wm_rgb.convert("L")
 
-    base = img.convert("RGBA")
+    def to_alpha(luma: int) -> int:
+        if luma >= white_cut:
+            return 0
+        a = 255 - luma
+        return int(max(0, min(255, a * opacity)))
+
+    return gray.point(to_alpha)
+
+
+def load_watermark_rgba(wm_path: str, opacity: float, white_cut: int) -> Image.Image:
+    wm = Image.open(wm_path)
+    if "A" in wm.getbands():
+        wm = wm.convert("RGBA")
+        r, g, b, a = wm.split()
+        opacity = max(0.0, min(1.0, opacity))
+        a = a.point(lambda px: int(px * opacity))
+        return Image.merge("RGBA", (r, g, b, a))
+
+    wm_rgb = wm.convert("RGB")
+    alpha = _alpha_from_luma(wm_rgb, opacity=opacity, white_cut=white_cut)
+    wm_rgba = wm_rgb.convert("RGBA")
+    wm_rgba.putalpha(alpha)
+    return wm_rgba
+
+
+def apply_watermark_center(base_rgb: Image.Image, wm_rgba: Image.Image, width_ratio: float) -> Image.Image:
+    base = base_rgb.convert("RGBA")
     bw, bh = base.size
 
-    with Image.open(wm_path) as wm:
-        wm = wm.convert("RGBA")
-        ww, wh = wm.size
+    ww, wh = wm_rgba.size
+    target_w = max(1, int(bw * width_ratio))
+    scale = target_w / max(1, ww)
+    target_h = max(1, int(wh * scale))
+    wm = wm_rgba.resize((target_w, target_h), Image.LANCZOS)
 
-        target_w = max(1, int(bw * width_ratio))
-        scale = target_w / max(1, ww)
-        target_h = max(1, int(wh * scale))
-        wm = wm.resize((target_w, target_h), Image.LANCZOS)
+    x = (bw - wm.size[0]) // 2
+    y = (bh - wm.size[1]) // 2
 
-        if opacity < 1.0:
-            r, g, b, a = wm.split()
-            a = a.point(lambda px: int(px * max(0.0, min(1.0, opacity))))
-            wm = Image.merge("RGBA", (r, g, b, a))
+    layer = Image.new("RGBA", base.size, (0, 0, 0, 0))
+    layer.paste(wm, (x, y), wm)
 
-        x = (bw - wm.size[0]) // 2
-        y = (bh - wm.size[1]) // 2
-
-        overlay = Image.new("RGBA", base.size, (0, 0, 0, 0))
-        overlay.paste(wm, (x, y), wm)
-
-        out = Image.alpha_composite(base, overlay).convert("RGB")
-        return out
+    return Image.alpha_composite(base, layer).convert("RGB")
 
 
 def process_item(item: dict, watermark: bool):
@@ -125,17 +125,14 @@ def process_item(item: dict, watermark: bool):
     ensure_dir(os.path.dirname(thumb_dest))
 
     with Image.open(src) as im:
-        im = ImageOps.exif_transpose(im)
-        im = im.convert("RGB")
+        im = ImageOps.exif_transpose(im).convert("RGB")
 
         prev = resize_max(im, 1600)
         if watermark:
-            prev = apply_watermark_image(
-                prev,
-                watermark_path=None,
-                width_ratio=0.75,
-                opacity=0.20,
-            )
+            wm_path = _resolve_watermark_path(None)
+            wm = load_watermark_rgba(wm_path, opacity=OPACITY, white_cut=WHITE_CUT)
+            prev = apply_watermark_center(prev, wm, width_ratio=WIDTH_RATIO)
+
         prev.save(preview_dest, format="JPEG", quality=86, optimize=True, progressive=True)
 
         th = resize_max(im, 420)

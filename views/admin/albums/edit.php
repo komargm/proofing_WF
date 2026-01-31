@@ -41,4 +41,9 @@
     <input type="hidden" name="watermark" value="1" />
     <button class="btn" type="submit" onclick="return confirm('Uruchomić rescan albumu? Zostaną nadpisane preview i miniaturki dla zmienionych plików.');">Rescan albumu</button>
   </form>
+
+  <div style="margin-top:12px; display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
+    <a class="btn" href="/admin/album/<?= (int)$album['id'] ?>/add-photo">Dodaj zdjęcie do albumu</a>
+    <span class="muted">Wskaż 1 JPG z NAS (PATH_ORIGINALS) → system dopnie do albumu i wygeneruje miniaturę + preview.</span>
+  </div>
 </div>

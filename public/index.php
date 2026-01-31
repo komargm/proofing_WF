@@ -103,6 +103,32 @@ $router->get('/admin/album/{id}/photos', fn($p) => $adminAlbums->photos($p), [
   RequireRole::handle('admin'),
 ]);
 
+// Admin: Dodaj pojedyncze zdjęcie do istniejącego albumu (Pick from NAS)
+$router->get('/admin/album/{id}/add-photo', fn($p) => $adminAlbums->addPhotoPage($p), [
+  RequireAuth::handle(),
+  RequireRole::handle('admin'),
+]);
+
+$router->get('/admin/album/{id}/add-photo/list', fn($p) => $adminAlbums->addPhotoList($p), [
+  RequireAuth::handle(),
+  RequireRole::handle('admin'),
+]);
+
+$router->post('/admin/album/{id}/add-photo/start', fn($p) => $adminAlbums->addPhotoStart($p), [
+  RequireAuth::handle(),
+  RequireRole::handle('admin'),
+]);
+
+$router->get('/admin/album/{id}/add-photo/run/{job}', fn($p) => $adminAlbums->addPhotoRunPage($p), [
+  RequireAuth::handle(),
+  RequireRole::handle('admin'),
+]);
+
+$router->get('/admin/album/{id}/add-photo/stream/{job}', fn($p) => $adminAlbums->addPhotoStream($p), [
+  RequireAuth::handle(),
+  RequireRole::handle('admin'),
+]);
+
 $router->post('/admin/photo/{id}/comment', fn($p) => $adminPhotoActions->addComment($p), [
   RequireAuth::handle(),
   RequireRole::handle('admin'),

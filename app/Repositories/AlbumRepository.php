@@ -49,6 +49,136 @@ final class AlbumRepository {
     return $row ?: null;
   }
 
+  /**
+   * Zwraca absolutną ścieżkę pierwszego oryginału (photo_files.kind='original_jpg') w albumie.
+   * Przydaje się jako "domyślny folder" do funkcji Pick from NAS.
+   */
+  public function firstOriginalPathForAlbum(int $albumId): ?string {
+    $sql = "
+      SELECT f.path
+      FROM photos p
+      JOIN photo_files f ON f.photo_id = p.id AND f.kind = 'original_jpg'
+      WHERE p.album_id = :aid
+      ORDER BY p.sort_order ASC, p.id ASC
+      LIMIT 1
+    ";
+    $stmt = db()->prepare($sql);
+    $stmt->execute(['aid' => $albumId]);
+    $row = $stmt->fetch();
+    return $row['path'] ?? null;
+  }
+
+  /**
+   * Dodaje pojedyncze zdjęcie do istniejącego albumu i zwraca item do manifestu Pythona.
+   * Tworzy: photos + photo_files (original_jpg / preview_800 / thumb)
+   * Dodatkowo zapisuje metadane oryginału (file_size_bytes, file_mtime).
+   *
+   * @return array{photo_id:int, src:string, preview_dest:string, thumb_dest:string}
+   */
+  public function addSinglePhotoToAlbumPlan(int $albumId, string $srcAbsPath, string $pathProofingRoot): array {
+    $srcAbsPath = trim($srcAbsPath);
+    if ($srcAbsPath === '' || !is_file($srcAbsPath)) {
+      throw new RuntimeException('Plik źródłowy nie istnieje.');
+    }
+
+    $ext = strtolower(pathinfo($srcAbsPath, PATHINFO_EXTENSION));
+    if (!in_array($ext, ['jpg','jpeg'], true)) {
+      throw new RuntimeException('Dozwolone są tylko pliki JPG/JPEG.');
+    }
+
+    $pdo = db();
+    $pdo->beginTransaction();
+
+    try {
+      // duplikat?
+      $stmt = $pdo->prepare(
+        "SELECT 1
+         FROM photos p
+         JOIN photo_files f ON f.photo_id = p.id AND f.kind = 'original_jpg'
+         WHERE p.album_id = :aid AND f.path = :p
+         LIMIT 1"
+      );
+      $stmt->execute(['aid' => $albumId, 'p' => $srcAbsPath]);
+      if ($stmt->fetch()) {
+        throw new RuntimeException('To zdjęcie jest już dodane do albumu.');
+      }
+
+      // następny sort_order
+      $stmt = $pdo->prepare("SELECT COALESCE(MAX(sort_order), 0) AS m FROM photos WHERE album_id = :aid");
+      $stmt->execute(['aid' => $albumId]);
+      $m = (int)($stmt->fetch()['m'] ?? 0);
+      $nextSort = $m + 1;
+
+      // katalog docelowy w proofing
+      $albumDir = rtrim($pathProofingRoot, '/')."/album_{$albumId}";
+      $previewDir = $albumDir . '/previews';
+      $thumbDir   = $albumDir . '/thumbs';
+      if (!is_dir($previewDir) && !@mkdir($previewDir, 0777, true) && !is_dir($previewDir)) {
+        throw new RuntimeException('Nie mogę utworzyć katalogu: ' . $previewDir);
+      }
+      if (!is_dir($thumbDir) && !@mkdir($thumbDir, 0777, true) && !is_dir($thumbDir)) {
+        throw new RuntimeException('Nie mogę utworzyć katalogu: ' . $thumbDir);
+      }
+
+      // photos
+      $stmt = $pdo->prepare(
+        "INSERT INTO photos (album_id, sort_order, is_visible) VALUES (:aid, :sort, 1)"
+      );
+      $stmt->execute(['aid' => $albumId, 'sort' => $nextSort]);
+      $photoId = (int)$pdo->lastInsertId();
+
+      // photo_files
+      $previewDest = $previewDir . "/p_{$photoId}.jpg";
+      $thumbDest   = $thumbDir   . "/t_{$photoId}.jpg";
+
+      $stmt = $pdo->prepare(
+        "INSERT INTO photo_files (photo_id, kind, path, file_size_bytes, file_mtime)
+         VALUES (:pid, :kind, :path, :sz, :mt)"
+      );
+
+      $fsz = @filesize($srcAbsPath);
+      $fmt = @filemtime($srcAbsPath);
+      $sz = $fsz === false ? null : (int)$fsz;
+      $mt = $fmt === false ? null : gmdate('Y-m-d H:i:s', (int)$fmt);
+
+      // oryginał (z metadanymi)
+      $stmt->execute([
+        'pid' => $photoId,
+        'kind' => 'original_jpg',
+        'path' => $srcAbsPath,
+        'sz' => $sz,
+        'mt' => $mt,
+      ]);
+
+      // preview/thumb bez metadanych
+      $stmt->execute([
+        'pid' => $photoId,
+        'kind' => 'preview_800',
+        'path' => $previewDest,
+        'sz' => null,
+        'mt' => null,
+      ]);
+      $stmt->execute([
+        'pid' => $photoId,
+        'kind' => 'thumb',
+        'path' => $thumbDest,
+        'sz' => null,
+        'mt' => null,
+      ]);
+
+      $pdo->commit();
+      return [
+        'photo_id' => $photoId,
+        'src' => $srcAbsPath,
+        'preview_dest' => $previewDest,
+        'thumb_dest' => $thumbDest,
+      ];
+    } catch (Throwable $e) {
+      $pdo->rollBack();
+      throw $e;
+    }
+  }
+
   public function updateSettings(int $albumId, string $title, ?string $albumComment): void {
     $title = trim($title);
     if ($title === '' || mb_strlen($title) > 255) {

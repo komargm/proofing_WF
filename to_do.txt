@@ -104,3 +104,5 @@ Jeśli chcesz, w następnym kroku mogę od razu rozpisać:
 strukturę katalogów src/
 listę konkretnych endpointów + co zwracają (HTML/JSON)
 minimalne tabele widoków (SQL-e do dashboardu i albumu)
+-----------
+5C- zrobiony rescan poprawny nie wiesza servera. przetestowac na duzej ilosci

@@ -18,8 +18,9 @@ import json
 import os
 import sys
 from datetime import datetime
+from typing import Optional
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageOps
 
 
 def log(msg: str):
@@ -29,40 +30,6 @@ def log(msg: str):
 
 def ensure_dir(p: str):
     os.makedirs(p, exist_ok=True)
-
-
-def load_font(size: int):
-    for path in [
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-    ]:
-        if os.path.isfile(path):
-            try:
-                return ImageFont.truetype(path, size=size)
-            except Exception:
-                pass
-    return ImageFont.load_default()
-
-
-def apply_watermark(img: Image.Image, text: str = "WhisperedFrames") -> Image.Image:
-    base = img.convert("RGBA")
-    w, h = base.size
-    overlay = Image.new("RGBA", base.size, (0, 0, 0, 0))
-    draw = ImageDraw.Draw(overlay)
-
-    font_size = max(14, int(min(w, h) * 0.035))
-    font = load_font(font_size)
-
-    pad = int(font_size * 0.6)
-    text_w, text_h = draw.textbbox((0, 0), text, font=font)[2:4]
-    x = w - text_w - pad
-    y = h - text_h - pad
-
-    draw.text((x + 2, y + 2), text, font=font, fill=(0, 0, 0, 110))
-    draw.text((x, y), text, font=font, fill=(255, 255, 255, 140))
-
-    out = Image.alpha_composite(base, overlay).convert("RGB")
-    return out
 
 
 def resize_max(img: Image.Image, max_side: int) -> Image.Image:
@@ -76,6 +43,70 @@ def resize_max(img: Image.Image, max_side: int) -> Image.Image:
         new_h = max_side
         new_w = int(w * (max_side / h))
     return img.resize((new_w, new_h), Image.LANCZOS)
+
+
+def _resolve_watermark_path(explicit_path: Optional[str] = None) -> str:
+    """
+    Priorytet:
+    1) explicit_path (jeśli podasz)
+    2) watermark.png w katalogu skryptu
+    3) /var/www/html/watermark.png
+    """
+    if explicit_path and os.path.isfile(explicit_path):
+        return explicit_path
+
+    here = os.path.dirname(os.path.abspath(__file__))
+    p1 = os.path.join(here, "watermark.png")
+    if os.path.isfile(p1):
+        return p1
+
+    p2 = "/var/www/html/watermark.png"
+    if os.path.isfile(p2):
+        return p2
+
+    raise FileNotFoundError(
+        "Nie znaleziono pliku watermark.png (szukałem: katalog skryptu oraz /var/www/html/watermark.png)"
+    )
+
+
+def apply_watermark_image(
+    img: Image.Image,
+    watermark_path: Optional[str] = None,
+    width_ratio: float = 0.75,   # docelowo 3/4 szerokości zdjęcia
+    opacity: float = 0.20,       # 0..1
+) -> Image.Image:
+    """
+    Nakłada PNG jako watermark na środek zdjęcia.
+    - width_ratio: jaką część szerokości zdjęcia ma zajmować watermark (np. 0.75)
+    - opacity: globalna przezroczystość watermarka (0..1)
+    """
+    wm_path = _resolve_watermark_path(watermark_path)
+
+    base = img.convert("RGBA")
+    bw, bh = base.size
+
+    with Image.open(wm_path) as wm:
+        wm = wm.convert("RGBA")
+        ww, wh = wm.size
+
+        target_w = max(1, int(bw * width_ratio))
+        scale = target_w / max(1, ww)
+        target_h = max(1, int(wh * scale))
+        wm = wm.resize((target_w, target_h), Image.LANCZOS)
+
+        if opacity < 1.0:
+            r, g, b, a = wm.split()
+            a = a.point(lambda px: int(px * max(0.0, min(1.0, opacity))))
+            wm = Image.merge("RGBA", (r, g, b, a))
+
+        x = (bw - wm.size[0]) // 2
+        y = (bh - wm.size[1]) // 2
+
+        overlay = Image.new("RGBA", base.size, (0, 0, 0, 0))
+        overlay.paste(wm, (x, y), wm)
+
+        out = Image.alpha_composite(base, overlay).convert("RGB")
+        return out
 
 
 def process_item(item: dict, watermark: bool):
@@ -94,11 +125,17 @@ def process_item(item: dict, watermark: bool):
     ensure_dir(os.path.dirname(thumb_dest))
 
     with Image.open(src) as im:
+        im = ImageOps.exif_transpose(im)
         im = im.convert("RGB")
 
         prev = resize_max(im, 1600)
         if watermark:
-            prev = apply_watermark(prev)
+            prev = apply_watermark_image(
+                prev,
+                watermark_path=None,
+                width_ratio=0.75,
+                opacity=0.20,
+            )
         prev.save(preview_dest, format="JPEG", quality=86, optimize=True, progressive=True)
 
         th = resize_max(im, 420)

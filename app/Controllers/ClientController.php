@@ -38,4 +38,20 @@ final class ClientController {
       'count' => count($photos),
     ]));
   }
+
+  public function photo(array $params): void {
+    $userId = (int)($_SESSION['user_id'] ?? 0);
+    $photoId = isset($params['id']) ? (int)$params['id'] : 0;
+
+    if ($photoId <= 0) {
+      Response::html('Bad Request', 400);
+    }
+
+    $data = $this->photos->viewerForUser($userId, $photoId);
+    if (!$data) {
+      Response::html('Forbidden', 403);
+    }
+
+    Response::html(View::page('client/photo', $data));
+  }
 }

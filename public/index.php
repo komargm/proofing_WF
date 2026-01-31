@@ -22,6 +22,7 @@ $ingest = new IngestWizardController($ingestRepo);
 $adminAlbums = new AdminAlbumsController($albumRepo, $photoRepo);
 $adminPhotoActionsRepo = new AdminPhotoActionsRepository();
 $adminPhotoActions = new AdminPhotoActionsController($adminPhotoActionsRepo);
+$adminPhoto = new AdminPhotoController($photoRepo);
 
 $media  = new MediaController($photoRepo);
 $clientActions = new ClientActionsController($photoActionsRepo);
@@ -42,6 +43,11 @@ $router->get('/client/album/{id}', fn($params) => $client->album($params), [
   RequireAuth::handle(),
   RequireRole::handle('client'),
 ]);
+$router->get('/client/photo/{id}', fn($params) => $client->photo($params), [
+  RequireAuth::handle(),
+  RequireRole::handle('client'),
+]);
+
 
 $router->post('/client/photo/{id}/toggle-select', fn($params) => $clientActions->toggleSelect($params), [
   RequireAuth::handle(),
@@ -62,6 +68,11 @@ $router->get('/media/photo/{id}/{kind}', fn($params) => $media->photoFile($param
   RequireAuth::handle(),
   RequireRole::handleAny(['client','admin']),
 ]);
+$router->get('/media/photo/{id}/original', fn($params) => $media->downloadOriginal($params), [
+  RequireAuth::handle(),
+  RequireRole::handleAny(['client','admin']),
+]);
+
 
 $router->get('/admin/dashboard', fn() => $admin->dashboard(), [
   RequireAuth::handle(),
@@ -125,6 +136,16 @@ $router->get('/admin/album/{id}/add-photo/run/{job}', fn($p) => $adminAlbums->ad
 ]);
 
 $router->get('/admin/album/{id}/add-photo/stream/{job}', fn($p) => $adminAlbums->addPhotoStream($p), [
+  RequireAuth::handle(),
+  RequireRole::handle('admin'),
+]);
+
+$router->get('/admin/photo/{id}', fn($p) => $adminPhoto->photo($p), [
+  RequireAuth::handle(),
+  RequireRole::handle('admin'),
+]);
+
+$router->post('/admin/photo/{id}/download-allowed', fn($p) => $adminPhoto->setDownloadAllowed($p), [
   RequireAuth::handle(),
   RequireRole::handle('admin'),
 ]);

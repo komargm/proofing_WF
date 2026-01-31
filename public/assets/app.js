@@ -146,4 +146,175 @@
       if (btn) btn.disabled = false;
     }
   });
+
+  // ===== Viewer page actions (client/admin photo page) =====
+  document.addEventListener('DOMContentLoaded', () => {
+    const chat = document.getElementById('js-chat');
+    if (chat) chat.scrollTop = chat.scrollHeight; // auto-scroll to bottom
+  });
+
+  // Client: heart toggle
+  document.addEventListener('click', async (e) => {
+    const heart = e.target?.closest?.('#js-heart');
+    if (heart) {
+      e.preventDefault();
+      const pid = heart.getAttribute('data-photo-id');
+      if (!pid) return;
+      try {
+        heart.disabled = true;
+        const json = await post(`/client/photo/${pid}/toggle-select`, {});
+        heart.classList.toggle('is-on', !!json.selected);
+      } catch (err) {
+        alert(err.message || 'Błąd');
+      } finally {
+        heart.disabled = false;
+      }
+    }
+
+    // Client: rating buttons on viewer page
+    const rateBtn = e.target?.closest?.('.rating-row .rate-btn');
+    if (rateBtn) {
+      e.preventDefault();
+      const row = rateBtn.closest('.rating-row');
+      const pid = row?.getAttribute('data-photo-id');
+      const rating = rateBtn.getAttribute('data-rating');
+      if (!pid || !rating) return;
+      try {
+        const json = await post(`/client/photo/${pid}/rate`, { rating });
+        row.querySelectorAll('.rate-btn').forEach(b => b.classList.remove('is-on'));
+        rateBtn.classList.add('is-on');
+      } catch (err) {
+        alert(err.message || 'Błąd');
+      }
+    }
+
+    const clearBtn = e.target?.closest?.('.rating-row .rate-clear');
+    if (clearBtn) {
+      e.preventDefault();
+      const row = clearBtn.closest('.rating-row');
+      const pid = row?.getAttribute('data-photo-id');
+      if (!pid) return;
+      try {
+        await post(`/client/photo/${pid}/rate`, { rating: 0 });
+        row.querySelectorAll('.rate-btn').forEach(b => b.classList.remove('is-on'));
+      } catch (err) {
+        alert(err.message || 'Błąd');
+      }
+    }
+  });
+
+  // Client: chat submit (viewer)
+  document.addEventListener('submit', async (e) => {
+    const form = e.target;
+    if (!(form instanceof HTMLFormElement)) return;
+
+    if (form.id === 'js-chat-form') {
+      e.preventDefault();
+      const pid = form.getAttribute('data-photo-id');
+      const input = form.querySelector('input[name="text"]');
+      const text = input?.value || '';
+      if (!pid || !text.trim()) return;
+
+      const btn = form.querySelector('button[type="submit"]');
+      try {
+        if (btn) btn.disabled = true;
+        const json = await post(`/client/photo/${pid}/comment`, { text });
+
+        const chat = document.getElementById('js-chat');
+        if (chat) {
+          const wrap = document.createElement('div');
+          wrap.className = 'chat-msg from-client';
+          wrap.innerHTML = `
+            <div class="chat-meta">
+              <strong>Klient</strong>
+              <span class="muted">${json.comment.created_at || ''}</span>
+            </div>
+            <div class="chat-text"></div>
+          `;
+          wrap.querySelector('.chat-text').textContent = json.comment.comment_text || text;
+          chat.appendChild(wrap);
+          chat.scrollTop = chat.scrollHeight;
+        }
+
+        if (input) input.value = '';
+      } catch (err) {
+        alert(err.message || 'Błąd');
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    // Admin: chat submit (viewer)
+    if (form.id === 'js-admin-chat-form') {
+      e.preventDefault();
+      const pid = form.getAttribute('data-photo-id');
+      const input = form.querySelector('input[name="text"]');
+      const text = input?.value || '';
+      if (!pid || !text.trim()) return;
+
+      const btn = form.querySelector('button[type="submit"]');
+      try {
+        if (btn) btn.disabled = true;
+        const json = await post(`/admin/photo/${pid}/comment`, { text });
+
+        const chat = document.getElementById('js-chat');
+        if (chat) {
+          const wrap = document.createElement('div');
+          wrap.className = 'chat-msg from-admin';
+          wrap.innerHTML = `
+            <div class="chat-meta">
+              <strong>Fotograf</strong>
+              <span class="muted">${json.comment.created_at || ''}</span>
+            </div>
+            <div class="chat-text"></div>
+          `;
+          wrap.querySelector('.chat-text').textContent = json.comment.comment_text || text;
+          chat.appendChild(wrap);
+          chat.scrollTop = chat.scrollHeight;
+        }
+
+        if (input) input.value = '';
+      } catch (err) {
+        alert(err.message || 'Błąd');
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+  });
+
+  // Admin: download toggle (viewer)
+  document.addEventListener('change', async (e) => {
+    const cb = e.target?.closest?.('#js-download-toggle');
+    if (!cb) return;
+    const pid = cb.getAttribute('data-photo-id');
+    if (!pid) return;
+
+    const allowed = cb.checked ? 1 : 0;
+    try {
+      cb.disabled = true;
+      const json = await post(`/admin/photo/${pid}/download-allowed`, { allowed });
+      const label = document.getElementById('js-download-label');
+      if (label) label.textContent = json.allowed ? 'TAK' : 'NIE';
+    } catch (err) {
+      cb.checked = !cb.checked;
+      alert(err.message || 'Błąd');
+    } finally {
+      cb.disabled = false;
+    }
+  });
+
+  // Keyboard nav on viewer page
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    const viewer = document.querySelector('.viewer');
+    if (!viewer) return;
+
+    const links = Array.from(document.querySelectorAll('.viewer-nav a.btn[href^="/client/photo/"], .viewer-nav a.btn[href^="/admin/photo/"]'));
+    const prevLink = links.find(a => a.textContent.includes('Poprzednie'));
+    const nextLink = links.find(a => a.textContent.includes('Następne'));
+
+    if (e.key === 'ArrowLeft' && prevLink) window.location.href = prevLink.getAttribute('href');
+    if (e.key === 'ArrowRight' && nextLink) window.location.href = nextLink.getAttribute('href');
+  });
+
 })();

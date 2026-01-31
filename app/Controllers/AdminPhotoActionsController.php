@@ -10,7 +10,7 @@ final class AdminPhotoActionsController {
     Csrf::validate();
 
     $payload = json_decode((string)file_get_contents('php://input'), true) ?: [];
-    $text = (string)($payload['text'] ?? '');
+    $text = (string)($payload['text'] ?? ($_POST['text'] ?? ''));
 
     $comment = $this->repo->addComment($adminId, $photoId, $text);
     Response::json(['ok' => true, 'comment' => $comment]);

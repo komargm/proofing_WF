@@ -41,6 +41,7 @@ require_once __DIR__ . '/Controllers/ClientActionsController.php';
 require_once __DIR__ . '/Controllers/AdminController.php';
 require_once __DIR__ . '/Controllers/AdminUsersController.php';
 require_once __DIR__ . '/Controllers/AdminAlbumsController.php';
+require_once __DIR__ . '/Controllers/AdminPhotoController.php';
 require_once __DIR__ . '/Controllers/AdminPhotoActionsController.php';
 require_once __DIR__ . '/Controllers/IngestWizardController.php';
 require_once __DIR__ . '/Controllers/MediaController.php';

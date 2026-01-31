@@ -28,7 +28,7 @@
     <?php foreach ($photos as $p): ?>
       <?php $pid = (int)$p['id']; ?>
       <div class="photo-tile" data-photo-id="<?= $pid ?>">
-        <a class="photo-img" href="/media/photo/<?= $pid ?>/preview_800" target="_blank" rel="noopener">
+        <a class="photo-img" href="/admin/photo/<?= $pid ?>">
           <?php if (!empty($p['thumb_path'])): ?>
             <img loading="lazy" alt="thumb" src="/media/photo/<?= $pid ?>/thumb" />
           <?php else: ?>

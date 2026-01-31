@@ -44,6 +44,46 @@ final class MediaController {
     exit;
   }
 
+
+  public function downloadOriginal(array $params): void {
+    $userId = (int)($_SESSION['user_id'] ?? 0);
+    $role = (string)($_SESSION['user_role'] ?? '');
+    $photoId = isset($params['id']) ? (int)$params['id'] : 0;
+    if ($photoId <= 0) {
+      Response::html('Bad Request', 400);
+    }
+
+    if ($role === 'admin') {
+      $path = $this->photos->filePathForAdmin($photoId, 'original_jpg');
+    } else {
+      $path = $this->photos->originalPathIfAllowedForUser($userId, $photoId);
+    }
+    if (!$path) {
+      Response::html('Forbidden', 403);
+    }
+
+    $real = $this->safeRealPath($path);
+    if (!$real || !is_file($real)) {
+      Response::html('Not Found', 404);
+    }
+
+    $name = basename($real);
+
+    header('Content-Type: image/jpeg');
+    header('X-Content-Type-Options: nosniff');
+    header('Content-Disposition: attachment; filename="' . addslashes($name) . '"');
+    header('Cache-Control: private, max-age=0');
+
+    $fp = fopen($real, 'rb');
+    if ($fp === false) {
+      Response::html('Not Found', 404);
+    }
+    fpassthru($fp);
+    fclose($fp);
+    exit;
+  }
+
+
   /**
    * Minimalna ochrona ścieżek: dopuszczamy tylko pliki wewnątrz mountów w kontenerze.
    * Dostosuj jeśli trzymasz inne mounty.

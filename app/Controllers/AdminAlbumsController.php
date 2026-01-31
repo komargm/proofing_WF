@@ -115,6 +115,15 @@ final class AdminAlbumsController {
 
   /** SSE: logi rescanu na żywo */
   public function rescanStream(array $params): void {
+        // 🔴 KLUCZOWE: uwalniamy lock sesji, inaczej cały portal wisi
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        session_write_close();
+    }
+
+    // pozwalamy na długi request, ale bez blokowania PHP
+    set_time_limit(0);
+    ignore_user_abort(true);
+
     $albumId = isset($params['id']) ? (int)$params['id'] : 0;
     $jobId = (string)($params['job'] ?? '');
     if ($albumId <= 0 || $jobId === '') Response::html('Bad Request', 400);

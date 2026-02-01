@@ -21,11 +21,15 @@ class ClientPhotoCommentController
             return;
         }
 
-        $body = (string)($_POST['comment_text'] ?? '');
+        // app.js wysyła pole "text"; wspieramy też starsze "comment_text"
+        $body = (string)($_POST['text'] ?? ($_POST['comment_text'] ?? ''));
 
         try {
             $row = $this->comments->addClientComment($photoId, $userId, $body);
-            echo json_encode(['ok' => true, 'data' => $row]);
+            // Ujednolicamy format odpowiedzi z endpointem admina (/admin/photo/:id/comment)
+            $row['author_name'] = (string)($_SESSION['user_first_name'] ?? '');
+            $row['role_name'] = 'client';
+            echo json_encode(['ok' => true, 'comment' => $row]);
         } catch (InvalidArgumentException $e) {
             http_response_code(422);
             echo json_encode(['ok' => false, 'error' => $e->getMessage()]);

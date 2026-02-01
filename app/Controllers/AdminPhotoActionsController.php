@@ -13,6 +13,8 @@ final class AdminPhotoActionsController {
     $text = (string)($payload['text'] ?? ($_POST['text'] ?? ''));
 
     $comment = $this->repo->addComment($adminId, $photoId, $text);
+    $comment['author_name'] = (string)($_SESSION['user_first_name'] ?? '');
+    $comment['role_name'] = 'admin';
     Response::json(['ok' => true, 'comment' => $comment]);
   }
 }

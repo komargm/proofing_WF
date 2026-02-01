@@ -271,7 +271,6 @@ final class PhotoRepository {
         pc.comment_text,
         pc.created_at,
         u.first_name,
-        u.last_name,
         r.name AS role_name
       FROM photo_comments pc
       LEFT JOIN users u ON u.id = pc.user_id
@@ -392,7 +391,6 @@ final class PhotoRepository {
         pc.comment_text,
         pc.created_at,
         u.first_name,
-        u.last_name,
         r.name AS role_name
       FROM photo_comments pc
       LEFT JOIN users u ON u.id = pc.user_id

@@ -224,9 +224,10 @@
         if (chat) {
           const wrap = document.createElement('div');
           wrap.className = 'chat-msg from-client';
+          const name = (json.comment && json.comment.author_name) ? json.comment.author_name : '';
           wrap.innerHTML = `
             <div class="chat-meta">
-              <strong>Klient</strong>
+              <strong>${name}</strong>
               <span class="muted">${json.comment.created_at || ''}</span>
             </div>
             <div class="chat-text"></div>
@@ -261,9 +262,10 @@
         if (chat) {
           const wrap = document.createElement('div');
           wrap.className = 'chat-msg from-admin';
+          const name = (json.comment && json.comment.author_name) ? json.comment.author_name : '';
           wrap.innerHTML = `
             <div class="chat-meta">
-              <strong>Fotograf</strong>
+              <strong>${name}</strong>
               <span class="muted">${json.comment.created_at || ''}</span>
             </div>
             <div class="chat-text"></div>

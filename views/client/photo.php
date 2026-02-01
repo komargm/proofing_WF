@@ -81,9 +81,7 @@
           <?php foreach ($comments as $c): ?>
             <?php
               $role = (string)($c['role_name'] ?? '');
-              $who = $role === 'admin' ? 'Fotograf' : 'Klient';
-              $name = trim(((string)($c['first_name'] ?? '') . ' ' . (string)($c['last_name'] ?? '')));
-              $label = $name !== '' ? "{$who} ({$name})" : $who;
+              $label = (string)($c['first_name'] ?? '');
             ?>
             <div class="chat-msg <?= $role === 'admin' ? 'from-admin' : 'from-client' ?>">
               <div class="chat-meta">

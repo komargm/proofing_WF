@@ -12,10 +12,29 @@
 <body>
   <div class="topbar">
     <div class="brand">WhisperedFrames</div>
+
     <?php if (!empty($_SESSION['user_id'])): ?>
-      <a class="btn" href="/logout">Wyloguj</a>
+      <?php
+        $fn = trim((string)($_SESSION['user_first_name'] ?? ''));
+        $ln = trim((string)($_SESSION['user_last_name'] ?? ''));
+        $email = trim((string)($_SESSION['user_email'] ?? ''));
+
+        if ($fn !== '') {
+          $display = 'Witaj: ' . ($ln !== '' ? ($fn . ' ' . $ln) : $fn);
+        } elseif ($email !== '') {
+          $display = $email;
+        } else {
+          $display = 'Zalogowano';
+        }
+      ?>
+      <div class="right">
+        <span class="pill"><?= htmlspecialchars($display, ENT_QUOTES, 'UTF-8') ?></span>
+        <a class="btn" href="/logout">Wyloguj</a>
+      </div>
     <?php endif; ?>
   </div>
+
+
 
   <main class="container">
     <?= $content ?>

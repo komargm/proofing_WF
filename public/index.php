@@ -198,6 +198,16 @@ $router->post('/admin/users/create', fn() => $adminUsers->store(), [
   RequireRole::handle('admin'),
 ]);
 
+
+$router->get('/admin/users/{id}/edit', fn($p) => $adminUsers->edit($p), [
+  RequireAuth::handle(),
+  RequireRole::handle('admin'),
+]);
+$router->post('/admin/users/{id}/edit', fn($p) => $adminUsers->update($p), [
+  RequireAuth::handle(),
+  RequireRole::handle('admin'),
+]);
+
 // Ingest Wizard (Faza 5)
 $router->get('/admin/albums/create', fn() => $ingest->step1(), [
   RequireAuth::handle(),

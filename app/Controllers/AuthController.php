@@ -27,6 +27,7 @@ final class AuthController {
         'error' => 'Błędne dane logowania',
         'csrf'  => Csrf::token(),
       ]));
+      return;
     }
 
     $this->redirectAfterLogin();

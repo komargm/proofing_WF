@@ -23,6 +23,9 @@ final class AuthService {
     session_regenerate_id(true);
     $_SESSION['user_id'] = (int)$user['id'];
     $_SESSION['user_role'] = $role;
+    $_SESSION['user_first_name'] = (string)($user['first_name'] ?? '');
+    $_SESSION['user_last_name'] = (string)($user['last_name'] ?? '');
+    $_SESSION['user_email'] = (string)($user['email'] ?? '');
 
     return true;
   }

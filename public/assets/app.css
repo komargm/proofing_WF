@@ -5,7 +5,26 @@
 */
 body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; margin: 0; background:#0b0b0c; color:#f2f2f2; }
 .container { max-width: 1180px; margin: 24px auto; padding: 0 16px; }
-.topbar { display:flex; justify-content:space-between; align-items:center; padding: 14px 16px; background:#121214; position: sticky; top:0; z-index: 10; }
+.topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between; /* brand po lewej, reszta po prawej */
+}
+
+.topbar .right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+
+.topbar-user {
+    font-weight: 500;
+    color: #ddd;
+    white-space: nowrap;
+}
+
+
 .brand { font-weight: 700; letter-spacing: 0.3px; }
 .card { background:#141417; padding:16px; border-radius:14px; display:grid; gap:10px; border: 1px solid #232329; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
 label { font-size: 14px; opacity: .92; color: rgba(242,242,242,.9); }

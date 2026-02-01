@@ -10,7 +10,7 @@
   <a class="btn" href="/admin/album/<?= (int)$album['id'] ?>/photos<?= $qs ?>">← Wróć do zdjęć albumu</a>
   <a class="btn" href="/admin/albums">Lista albumów</a>
   <a class="btn" href="/admin/dashboard">Dashboard</a>
-  <form method="post" action="/admin/photo/<?= (int)$photo['id'] ?>/delete" style="display:inline;" onsubmit="return confirm('Usunąć to zdjęcie? (usunie wpisy w DB + preview/thumb)');">
+  <form method="post" action="/admin/photo/<?= (int)$photo['id'] ?>/delete<?= $qs ?>" style="display:inline;" onsubmit="return confirm('Usunąć to zdjęcie? (usunie wpisy w DB + preview/thumb)');">
     <input type="hidden" name="csrf" value="<?= htmlspecialchars(Csrf::token(), ENT_QUOTES, 'UTF-8') ?>" />
     <button type="submit" class="btn" style="border-color:#ff4d4f; color:#ff4d4f;">Usuń zdjęcie</button>
   </form>

@@ -18,6 +18,35 @@ if (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PRO
 session_name($config['app']['session_name']);
 session_start();
 
+// Uzupełnij brakujące dane usera w sesji (np. po starszych wersjach logowania).
+// Dzięki temu w topbarze możemy zawsze pokazać "Witaj: Imię".
+if (!empty($_SESSION['user_id']) && !array_key_exists('user_first_name', $_SESSION)) {
+  try {
+    $uid = (int)$_SESSION['user_id'];
+    if ($uid > 0) {
+      // Tu nie używamy repozytorium (jeszcze nie jest require_once), tylko minimalne zapytanie.
+      $dbCfg = $config['db'];
+      $dsn = sprintf('mysql:host=%s;dbname=%s;charset=%s', $dbCfg['host'], $dbCfg['name'], $dbCfg['charset']);
+      $pdo = new PDO($dsn, $dbCfg['user'], $dbCfg['pass'], [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES => false,
+      ]);
+
+      $stmt = $pdo->prepare('SELECT email, first_name, last_name FROM users WHERE id = :id LIMIT 1');
+      $stmt->execute(['id' => $uid]);
+      $u = $stmt->fetch() ?: null;
+      if ($u) {
+        $_SESSION['user_email'] = (string)($u['email'] ?? '');
+        $_SESSION['user_first_name'] = (string)($u['first_name'] ?? '');
+        $_SESSION['user_last_name'] = (string)($u['last_name'] ?? '');
+      }
+    }
+  } catch (Throwable $e) {
+    // Jeśli DB chwilowo nie odpowie, po prostu nie blokuj requestu.
+  }
+}
+
 require_once __DIR__ . '/Core/Router.php';
 require_once __DIR__ . '/Core/Response.php';
 require_once __DIR__ . '/Core/View.php';

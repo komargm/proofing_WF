@@ -1,6 +1,9 @@
 <h1>Panel admina</h1>
 
-<p>Zalogowano jako user_id: <?= (int)$user_id ?></p>
+<?php
+  $fn = trim((string)($_SESSION['user_first_name'] ?? ''));
+?>
+<p><?= $fn !== '' ? ('Witaj, ' . htmlspecialchars($fn, ENT_QUOTES, 'UTF-8') . '!') : ('Zalogowano jako user_id: ' . (int)$user_id) ?></p>
 
 <div style="margin: 16px 0; display:flex; gap:12px; flex-wrap:wrap;">
   <a class="btn" href="/admin/albums">Albumy (lista)</a>

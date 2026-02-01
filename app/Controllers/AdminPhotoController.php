@@ -56,6 +56,17 @@ final class AdminPhotoController {
       Response::html('Bad Request', 400);
     }
 
+    $sectionId = isset($_GET['section']) ? (int)$_GET['section'] : null;
+    if ($sectionId !== null && $sectionId <= 0) $sectionId = null;
+
+    // Zapamiętaj "gdzie wrócić" zanim skasujemy rekord
+    $viewer = $this->photos->viewerForAdmin($photoId, $sectionId);
+    if (!$viewer) {
+      Response::html('Not Found', 404);
+    }
+    $nav = $viewer['nav'] ?? [];
+    $albumId = (int)($viewer['album']['id'] ?? 0);
+
     Csrf::verifyOrFail($_POST['csrf'] ?? null);
 
     $res = $this->photos->adminDeletePhoto($photoId);
@@ -71,9 +82,23 @@ final class AdminPhotoController {
       }
     }
 
-    $albumId = (int)$res['album_id'];
-    Response::redirect("/admin/album/{$albumId}/photos");
+    // Po usunięciu: zostań w widoku "dużego zdjęcia" — przejdź na poprzednie (lub następne)
+    $qs = ($sectionId !== null && (int)$sectionId > 0) ? ('?section='.(int)$sectionId) : '';
+    $prevId = (int)($nav['prev_id'] ?? 0);
+    $nextId = (int)($nav['next_id'] ?? 0);
+
+    if ($prevId > 0) {
+      Response::redirect("/admin/photo/{$prevId}{$qs}");
+    }
+    if ($nextId > 0) {
+      Response::redirect("/admin/photo/{$nextId}{$qs}");
+    }
+
+    // Fallback: grid albumu
+    $albumId = $albumId > 0 ? $albumId : (int)$res['album_id'];
+    Response::redirect("/admin/album/{$albumId}/photos{$qs}");
   }
+
 
   private function safeRealPathProofing(string $path): ?string {
     $real = realpath($path);

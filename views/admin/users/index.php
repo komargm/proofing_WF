@@ -13,11 +13,16 @@
 
 <?php if ($flash): ?>
   <div class="card" style="border:1px solid #2b6cff;">
-    <div><strong>Utworzono klienta</strong> (user_id: <?= (int)$flash['user_id'] ?>)</div>
-    <div style="display:grid; gap:6px; margin-top:8px;">
-      <div><span class="muted">Login (email):</span> <code><?= htmlspecialchars((string)$flash['email'], ENT_QUOTES, 'UTF-8') ?></code></div>
-      <div><span class="muted">Hasło (pokaże się tylko raz):</span> <code><?= htmlspecialchars((string)$flash['password'], ENT_QUOTES, 'UTF-8') ?></code></div>
-    </div>
+    <?php if (!empty($flash['user_id'])): ?>
+      <div><strong>Utworzono klienta</strong> (user_id: <?= (int)$flash['user_id'] ?>)</div>
+      <div style="display:grid; gap:6px; margin-top:8px;">
+        <div><span class="muted">Login (email):</span> <code><?= htmlspecialchars((string)$flash['email'], ENT_QUOTES, 'UTF-8') ?></code></div>
+        <div><span class="muted">Hasło (pokaże się tylko raz):</span> <code><?= htmlspecialchars((string)$flash['password'], ENT_QUOTES, 'UTF-8') ?></code></div>
+      </div>
+    <?php elseif (!empty($flash['updated_user_id'])): ?>
+      <div><strong>Zapisano zmiany klienta</strong> (user_id: <?= (int)$flash['updated_user_id'] ?>)</div>
+      <div class="muted" style="margin-top:6px;">Email: <?= htmlspecialchars((string)($flash['updated_email'] ?? ''), ENT_QUOTES, 'UTF-8') ?><?= !empty($flash['password_changed']) ? ' • hasło zmienione' : '' ?></div>
+    <?php endif; ?>
   </div>
 <?php endif; ?>
 
@@ -31,12 +36,13 @@
         <th style="text-align:left; padding:12px; border-bottom:1px solid #2a2a2e;">Telefon</th>
         <th style="text-align:left; padding:12px; border-bottom:1px solid #2a2a2e;">Status</th>
         <th style="text-align:left; padding:12px; border-bottom:1px solid #2a2a2e;">Utworzono</th>
+        <th style="text-align:left; padding:12px; border-bottom:1px solid #2a2a2e;">Akcje</th>
       </tr>
     </thead>
     <tbody>
       <?php if (!$users): ?>
         <tr>
-          <td colspan="6" style="padding:12px; border-bottom:1px solid #2a2a2e;" class="muted">Brak klientów.</td>
+          <td colspan="7" style="padding:12px; border-bottom:1px solid #2a2a2e;" class="muted">Brak klientów.</td>
         </tr>
       <?php endif; ?>
 
@@ -52,6 +58,9 @@
           <td style="padding:12px; border-bottom:1px solid #2a2a2e;"><?= htmlspecialchars((string)($u['phone'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
           <td style="padding:12px; border-bottom:1px solid #2a2a2e;"><?= htmlspecialchars($status, ENT_QUOTES, 'UTF-8') ?></td>
           <td style="padding:12px; border-bottom:1px solid #2a2a2e;"><?= htmlspecialchars((string)($u['created_at'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
+          <td style="padding:12px; border-bottom:1px solid #2a2a2e;">
+            <a class="btn" href="/admin/users/<?= (int)$u['id'] ?>/edit">Edytuj</a>
+          </td>
         </tr>
       <?php endforeach; ?>
     </tbody>

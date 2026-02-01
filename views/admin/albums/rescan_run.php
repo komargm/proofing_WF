@@ -21,6 +21,8 @@
   const pill = document.getElementById('statusPill');
   const es = new EventSource('/admin/album/<?= (int)$album_id ?>/rescan/stream/<?= htmlspecialchars((string)$job_id, ENT_QUOTES, 'UTF-8') ?>');
 
+  window.addEventListener('beforeunload', () => { try { es.close(); } catch(e) {} });
+
   es.onmessage = (e) => {
     if (!e.data) return;
     const line = e.data;
@@ -36,6 +38,13 @@
     if (line.includes('[WF] ERROR')) {
       pill.textContent = 'Błąd';
     }
+  };
+
+  es.onerror = () => {
+    pill.textContent = 'Połączenie przerwane';
+    pill.classList.remove('green');
+    pill.classList.add('red');
+    try { es.close(); } catch(e) {}
   };
 })();
 </script>

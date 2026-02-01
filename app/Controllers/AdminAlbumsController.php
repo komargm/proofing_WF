@@ -196,12 +196,12 @@ final class AdminAlbumsController {
 
   /** SSE: logi rescanu na żywo */
   public function rescanStream(array $params): void {
-    // 🔴 KLUCZOWE: uwalniamy lock sesji, inaczej cały portal wisi
+        // 🔴 KLUCZOWE: uwalniamy lock sesji, inaczej cały portal wisi
     if (session_status() === PHP_SESSION_ACTIVE) {
-      session_write_close();
+        session_write_close();
     }
 
-    // SSE potrafi trwać długo: nie blokuj PHP, ale kończ gdy klient zniknie
+    // pozwalamy na długi request, ale bez blokowania PHP
     set_time_limit(0);
     ignore_user_abort(true);
 
@@ -217,30 +217,9 @@ final class AdminAlbumsController {
     header('Content-Type: text/event-stream');
     header('Cache-Control: no-cache');
     header('X-Accel-Buffering: no');
-    // --- SSE: wymuś real-time flush (ANTI 504) ---
-    @ini_set('output_buffering', 'off');
-    @ini_set('zlib.output_compression', '0');
-    @ini_set('implicit_flush', '1');
-
-    // zamknij wszystkie bufory PHP
-    while (ob_get_level() > 0) {
-      @ob_end_flush();
-    }
-    @ob_implicit_flush(true);
-
-    // upewnij się, że proxy nie kompresuje
-    header('Content-Encoding: none');
-
-    // NATYCHMIASTOWY sygnał do proxy (bardzo ważne)
-    echo ": hello\n\n";
-    @flush();
 
     $pos = 0;
-    $done = false;
-    $lastPing = microtime(true);
-
-    // Pętla: czytamy dopisywany log, wysyłamy linie jako SSE, kończymy na DONE / rozłączeniu
-    while (!connection_aborted()) {
+    while (true) {
       clearstatcache(true, $logPath);
       $size = filesize($logPath);
       if ($size === false) break;
@@ -252,12 +231,6 @@ final class AdminAlbumsController {
           while (($line = fgets($fh)) !== false) {
             $line = rtrim($line, "\r\n");
             echo "data: " . str_replace(["\r","\n"], '', $line) . "\n\n";
-
-            // zakończ gdy job zakończony
-            if (strpos($line, '[WF] DONE') !== false) {
-              $done = true;
-            }
-
             @ob_flush();
             @flush();
           }
@@ -266,20 +239,8 @@ final class AdminAlbumsController {
         }
       }
 
-      // ping co ~1s, żeby proxy/przeglądarka nie zrywały ciszy
-      if ((microtime(true) - $lastPing) >= 1.0) {
-        echo ": ping\n\n";
-        @ob_flush();
-        @flush();
-        $lastPing = microtime(true);
-      }
-
-      if ($done) break;
-
       usleep(250000); // 250ms
     }
-
-    exit;
   }
 
   // =========================================================

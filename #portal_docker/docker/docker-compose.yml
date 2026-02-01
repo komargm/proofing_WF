@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  # 1. BAZA DANYCH (Bez zmian)
+  db:
+    image: mysql:8.0
+    container_name: wf_db
+    restart: always
+    environment:
+      MYSQL_DATABASE: whisperedframes
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASS}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASS}
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./schema.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - wf_network
+
+  # 2. SILNIK PHP + PYTHON (Tu dzieje się magia, ale bez portów na świat)
+  app:
+    build:
+      context: ./docker/app
+    container_name: wf_app
+    restart: always
+    volumes:
+      - ./src:/var/www/html
+      - ${PATH_ORIGINALS}:/var/www/photos/originals:ro
+      - ${PATH_PROOFING}:/var/www/photos/previews
+    environment:
+      DB_HOST: db
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASS}
+      DB_NAME: whisperedframes
+    depends_on:
+      - db
+    networks:
+      - wf_network
+
+  # 3. SERWER WWW (NGINX) - To on wystawia port 8080
+  web:
+    image: nginx:alpine
+    container_name: wf_web
+    restart: always
+    ports:
+      - "8080:80"
+    volumes:
+      - ./src:/var/www/html  # Nginx też musi widzieć pliki, żeby serwować statyczne
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app
+    networks:
+      - wf_network
+
+  # 4. ADMINER (Baza danych)
+  pma:
+    image: adminer
+    container_name: wf_pma
+    restart: always
+    ports:
+      - "8081:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: db
+    depends_on:
+      - db
+    networks:
+      - wf_network
+
+volumes:
+  db_data:
+
+networks:
+  wf_network:
+    driver: bridge

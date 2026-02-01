@@ -42,7 +42,11 @@
     const pill = t.querySelector('.js-rating-pill');
     const val = t.querySelector('.js-rating-val');
     const btns = t.querySelectorAll('.rate-btn');
-    btns.forEach(b => b.classList.toggle('is-on', Number(b.dataset.rating) === Number(rating)));
+    btns.forEach(b => {
+      const r = Number(rating || 0);
+      const v = Number(b.dataset.rating || 0);
+      b.classList.toggle('is-on', r > 0 && v <= r);
+    });
 
     if (rating) {
       if (pill) pill.style.display = '';
@@ -63,7 +67,17 @@
     }
   }
 
-  function setLastCommentUI(t, text) {
+  
+  function setAdminRatingUI(container, rating) {
+    const btns = container?.querySelectorAll?.('.admin-rate-btn') || [];
+    btns.forEach(b => {
+      const r = Number(rating || 0);
+      const v = Number(b.dataset.rating || 0);
+      b.classList.toggle('is-on', r > 0 && v <= r);
+    });
+  }
+
+function setLastCommentUI(t, text) {
     const box = t.querySelector('.js-last-comment');
     if (!box) return;
     box.textContent = text;
@@ -83,8 +97,7 @@
         target.disabled = true;
         const json = await post(`/admin/photo/${pid}/rate`, { rating });
         // UI: buttons
-        (row || tile(target))?.querySelectorAll('.admin-rate-btn').forEach(b => b.classList.remove('is-on'));
-        target.classList.add('is-on');
+        setAdminRatingUI((row || tile(target)), Number(json.rating ?? rating));
         // UI: pill
         const pill = document.getElementById('js-admin-rating-pill') || (tile(target)?.querySelector('.js-admin-rating-pill'));
         if (pill) {
@@ -225,6 +238,20 @@
   document.addEventListener('DOMContentLoaded', () => {
     const chat = document.getElementById('js-chat');
     if (chat) chat.scrollTop = chat.scrollHeight; // auto-scroll to bottom
+
+    // Ujednolicenie UI gwiazdek po renderze z PHP (PHP zaznaczało tylko 1 gwiazdkę)
+    document.querySelectorAll('.rating-row').forEach(row => {
+      // Admin rating rows
+      if (row.classList.contains('admin-rating-row') || row.querySelector('.admin-rate-btn')) {
+        const on = row.querySelector('.admin-rate-btn.is-on');
+        const r = Number(on?.dataset?.rating || 0);
+        setAdminRatingUI(row, r);
+      } else {
+        const on = row.querySelector('.rate-btn.is-on');
+        const r = Number(on?.dataset?.rating || 0);
+        setRatingUI(row, r);
+      }
+    });
   });
 
   // Client: heart toggle
@@ -259,8 +286,7 @@
       if (!pid || !rating) return;
       try {
         const json = await post(`/client/photo/${pid}/rate`, { rating });
-        row.querySelectorAll('.rate-btn').forEach(b => b.classList.remove('is-on'));
-        rateBtn.classList.add('is-on');
+        setRatingUI(row, Number(json.rating ?? rating));
 
         const match = document.getElementById('js-match-pill');
         if (row) {

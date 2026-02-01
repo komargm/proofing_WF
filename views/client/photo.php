@@ -4,6 +4,8 @@
 <?php /** @var array<int,array<string,mixed>> $sections */ ?>
 <?php /** @var array<int,array<string,mixed>> $comments */ ?>
 
+<div id="viewer-top"></div>
+
 <?php $sid = $nav['section_id'] ?? null; ?>
 <?php $qs = ($sid !== null && (int)$sid > 0) ? ('?section='.(int)$sid) : ''; ?>
 <?php
@@ -29,13 +31,13 @@
   <div class="viewer-left">
     <div class="viewer-nav">
       <?php if (!empty($nav['prev_id'])): ?>
-        <a class="btn" href="/client/photo/<?= (int)$nav['prev_id'] ?><?= $qs ?>">← Poprzednie</a>
+        <a class="btn" href="/client/photo/<?= (int)$nav['prev_id'] ?><?= $qs ?>#viewer-top">← Poprzednie</a>
       <?php else: ?>
         <span class="btn ghost disabled">← Poprzednie</span>
       <?php endif; ?>
 
       <?php if (!empty($nav['next_id'])): ?>
-        <a class="btn" href="/client/photo/<?= (int)$nav['next_id'] ?><?= $qs ?>">Następne →</a>
+        <a class="btn" href="/client/photo/<?= (int)$nav['next_id'] ?><?= $qs ?>#viewer-top">Następne →</a>
       <?php else: ?>
         <span class="btn ghost disabled">Następne →</span>
       <?php endif; ?>
@@ -63,7 +65,7 @@
                 data-photo-id="<?= (int)$photo['id'] ?>"
                 id="js-heart">♥</button>
 
-        <div class="rating-row"
+        <div class="rating-row user-rating"
              data-photo-id="<?= (int)$photo['id'] ?>"
              data-admin-rating="<?= (int)($photo['admin_rating'] ?? 0) ?>"
              data-photographer-name="<?= htmlspecialchars($photographer ?? '', ENT_QUOTES, 'UTF-8') ?>">
@@ -116,20 +118,12 @@
         <button type="submit" class="btn">Wyślij</button>
       </form>
 
-      <div class="divider"></div>
-
-      <div class="row">
-        <label class="checkline">
-          <input type="checkbox" disabled <?= !empty($photo['download_allowed_at']) ? 'checked' : '' ?> />
-          <span>Pobieranie oryginału: <?= !empty($photo['download_allowed_at']) ? 'TAK' : 'NIE' ?></span>
-        </label>
-
-        <?php if (!empty($photo['download_allowed_at'])): ?>
+      <?php if (!empty($photo['download_allowed_at'])): ?>
+        <div class="divider"></div>
+        <div class="row">
           <a class="btn" href="/media/photo/<?= (int)$photo['id'] ?>/original">Pobierz oryginał</a>
-        <?php else: ?>
-          <span class="btn ghost disabled">Pobierz oryginał</span>
-        <?php endif; ?>
-      </div>
+        </div>
+      <?php endif; ?>
 
     </div>
   </aside>

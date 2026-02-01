@@ -3,6 +3,8 @@
 <?php /** @var array<string,mixed> $nav */ ?>
 <?php /** @var array<int,array<string,mixed>> $comments */ ?>
 
+<div id="viewer-top"></div>
+
 <?php $sid = $nav['section_id'] ?? null; ?>
 <?php $qs = ($sid !== null && (int)$sid > 0) ? ('?section='.(int)$sid) : ''; ?>
 
@@ -24,13 +26,13 @@
   <div class="viewer-left">
     <div class="viewer-nav">
       <?php if (!empty($nav['prev_id'])): ?>
-        <a class="btn" href="/admin/photo/<?= (int)$nav['prev_id'] ?><?= $qs ?>">← Poprzednie</a>
+        <a class="btn" href="/admin/photo/<?= (int)$nav['prev_id'] ?><?= $qs ?>#viewer-top">← Poprzednie</a>
       <?php else: ?>
         <span class="btn ghost disabled">← Poprzednie</span>
       <?php endif; ?>
 
       <?php if (!empty($nav['next_id'])): ?>
-        <a class="btn" href="/admin/photo/<?= (int)$nav['next_id'] ?><?= $qs ?>">Następne →</a>
+        <a class="btn" href="/admin/photo/<?= (int)$nav['next_id'] ?><?= $qs ?>#viewer-top">Następne →</a>
       <?php else: ?>
         <span class="btn ghost disabled">Następne →</span>
       <?php endif; ?>
@@ -64,7 +66,7 @@
         </span>
       </div>
 
-      <div class="rating-row admin-rating-row" data-photo-id="<?= (int)$photo['id'] ?>">
+      <div class="rating-row admin-rating-row admin-rating" data-photo-id="<?= (int)$photo['id'] ?>">
         <?php for ($i=1; $i<=6; $i++): ?>
           <button type="button"
                   class="rate-btn admin-rate-btn <?= ((int)($photo['admin_rating'] ?? 0) === $i) ? 'is-on' : '' ?>"

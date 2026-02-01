@@ -184,6 +184,11 @@ $router->post('/admin/photo/{id}/comment', fn($p) => $adminPhotoActions->addComm
   RequireRole::handle('admin'),
 ]);
 
+$router->post('/admin/photo/{id}/rate', fn($p) => $adminPhotoActions->setAdminRating($p), [
+  RequireAuth::handle(),
+  RequireRole::handle('admin'),
+]);
+
 $router->get('/admin/users', fn() => $adminUsers->index(), [
   RequireAuth::handle(),
   RequireRole::handle('admin'),

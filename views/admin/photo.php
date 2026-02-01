@@ -57,9 +57,20 @@
           <?= !empty($photo['client_selected_at']) ? 'Wybrane' : 'Nie wybrane' ?>
         </span>
 
-        <span class="pill">
-          Ocena: <?= (int)($photo['client_rating'] ?? 0) ?>
+        <span class="pill">Ocena klienta: <?= (int)($photo['client_rating'] ?? 0) ?></span>
+
+        <span class="pill blue" id="js-admin-rating-pill" <?= empty($photo['admin_rating']) ? 'style="display:none"' : '' ?>>
+          Twoja ocena: ★ <?= (int)($photo['admin_rating'] ?? 0) ?>/6
         </span>
+      </div>
+
+      <div class="rating-row admin-rating-row" data-photo-id="<?= (int)$photo['id'] ?>">
+        <?php for ($i=1; $i<=6; $i++): ?>
+          <button type="button"
+                  class="rate-btn admin-rate-btn <?= ((int)($photo['admin_rating'] ?? 0) === $i) ? 'is-on' : '' ?>"
+                  data-rating="<?= $i ?>">★</button>
+        <?php endfor; ?>
+        <button type="button" class="rate-clear admin-rate-clear" title="Wyczyść ocenę">×</button>
       </div>
 
       <div class="divider"></div>

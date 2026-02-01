@@ -66,6 +66,10 @@
               ★ <span class="js-rating-val"><?= (int)($p['client_rating'] ?? 0) ?></span>/6
             </span>
 
+            <span class="pill js-admin-rating-pill" style="border-color:#7c3aed; color:#d8b4fe; <?= empty($p['admin_rating']) ? 'display:none;' : '' ?>">
+              Twoja ocena: ★ <?= (int)($p['admin_rating'] ?? 0) ?>/6
+            </span>
+
             <?php if (isset($p['is_visible']) && (int)$p['is_visible'] !== 1): ?>
               <span class="pill" style="border-color:#6b6b75; color:#bdbdc6;">Ukryte</span>
             <?php endif; ?>
@@ -75,6 +79,15 @@
               <button type="submit" class="btn mini" style="border-color:#ff4d4f; color:#ff4d4f;">Usuń</button>
             </form>
 
+          </div>
+
+          <div class="rating-row admin-rating-row" data-photo-id="<?= $pid ?>" aria-label="Ocena admin">
+            <?php for ($i=1; $i<=6; $i++): ?>
+              <button type="button"
+                      class="rate-btn admin-rate-btn <?= ((int)($p['admin_rating'] ?? 0) === $i) ? 'is-on' : '' ?>"
+                      data-rating="<?= $i ?>">★</button>
+            <?php endfor; ?>
+            <button type="button" class="rate-clear admin-rate-clear" title="Wyczyść ocenę">×</button>
           </div>
 
           <div style="margin:8px 0; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">

@@ -16,6 +16,7 @@ final class PhotoRepository {
         p.sort_order,
         p.section_id,
         p.client_rating,
+        p.admin_rating,
         p.client_selected_at,
         p.download_allowed_at,
 
@@ -85,6 +86,7 @@ final class PhotoRepository {
         p.sort_order,
         p.section_id,
         p.client_rating,
+        p.admin_rating,
         p.client_selected_at,
         p.download_allowed_at,
         p.is_visible,
@@ -194,6 +196,7 @@ final class PhotoRepository {
         p.sort_order,
         p.section_id,
         p.client_rating,
+        p.admin_rating,
         p.client_selected_at,
         p.download_allowed_at,
         p.created_at AS photo_created_at,
@@ -201,12 +204,15 @@ final class PhotoRepository {
         a.title AS album_title,
         a.created_at AS album_created_at,
 
+        au.first_name AS photographer_first_name,
+
         pf.path AS preview_path,
         ofl.path AS original_path
 
       FROM user_album_access uaa
       JOIN photos p ON p.album_id = uaa.album_id
       JOIN albums a ON a.id = p.album_id
+      LEFT JOIN users au ON au.id = a.created_by
       LEFT JOIN photo_files pf ON pf.photo_id = p.id AND pf.kind = 'preview_800'
       LEFT JOIN photo_files ofl ON ofl.photo_id = p.id AND ofl.kind = 'original_jpg'
       WHERE uaa.user_id = :uid
@@ -294,6 +300,7 @@ final class PhotoRepository {
         'sort_order' => $sortOrder,
         'section_id' => isset($row['section_id']) ? (int)$row['section_id'] : null,
         'client_rating' => $row['client_rating'] !== null ? (int)$row['client_rating'] : null,
+        'admin_rating' => $row['admin_rating'] !== null ? (int)$row['admin_rating'] : null,
         'client_selected_at' => $row['client_selected_at'],
         'download_allowed_at' => $row['download_allowed_at'],
         'photo_created_at' => $row['photo_created_at'],
@@ -304,6 +311,7 @@ final class PhotoRepository {
         'id' => $albumId,
         'title' => (string)$row['album_title'],
         'created_at' => (string)$row['album_created_at'],
+        'photographer_first_name' => (string)($row['photographer_first_name'] ?? ''),
       ],
       'nav' => [
         'prev_id' => $prevId > 0 ? $prevId : null,
@@ -324,6 +332,7 @@ final class PhotoRepository {
         p.sort_order,
         p.section_id,
         p.client_rating,
+        p.admin_rating,
         p.client_selected_at,
         p.download_allowed_at,
         p.created_at AS photo_created_at,
@@ -414,6 +423,7 @@ final class PhotoRepository {
         'sort_order' => $sortOrder,
         'section_id' => $row['section_id'] !== null ? (int)$row['section_id'] : null,
         'client_rating' => $row['client_rating'] !== null ? (int)$row['client_rating'] : null,
+        'admin_rating' => $row['admin_rating'] !== null ? (int)$row['admin_rating'] : null,
         'client_selected_at' => $row['client_selected_at'],
         'download_allowed_at' => $row['download_allowed_at'],
         'photo_created_at' => $row['photo_created_at'],
@@ -424,6 +434,7 @@ final class PhotoRepository {
         'id' => $albumId,
         'title' => (string)$row['album_title'],
         'created_at' => (string)$row['album_created_at'],
+        'photographer_first_name' => (string)($row['photographer_first_name'] ?? ''),
       ],
       'nav' => [
         'prev_id' => $prevId > 0 ? $prevId : null,

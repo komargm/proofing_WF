@@ -51,6 +51,16 @@
       if (pill) pill.style.display = 'none';
       if (val) val.textContent = '0';
     }
+
+    // Wspólna ocena (client>=2 && admin>=2) – tylko hint, bez pokazywania admin_rating
+    const matchPill = t.querySelector('.js-match-pill');
+    if (matchPill) {
+      const ar = Number(t.dataset.adminRating || 0);
+      const cr = Number(rating || 0);
+      matchPill.style.display = (ar >= 2 && cr >= 2) ? '' : 'none';
+      const name = t.dataset.photographerName || '';
+      if (name) matchPill.textContent = `👍 ${name} też lubi`;
+    }
   }
 
   function setLastCommentUI(t, text) {
@@ -61,6 +71,62 @@
 
   document.addEventListener('click', async (e) => {
     const target = e.target;
+
+    // Admin: rating set (tile or viewer)
+    if (target && target.classList.contains('admin-rate-btn')) {
+      e.preventDefault();
+      const row = target.closest('.admin-rating-row');
+      const pid = row?.getAttribute('data-photo-id') || tile(target)?.dataset.photoId;
+      const rating = target.dataset.rating;
+      if (!pid || !rating) return;
+      try {
+        target.disabled = true;
+        const json = await post(`/admin/photo/${pid}/rate`, { rating });
+        // UI: buttons
+        (row || tile(target))?.querySelectorAll('.admin-rate-btn').forEach(b => b.classList.remove('is-on'));
+        target.classList.add('is-on');
+        // UI: pill
+        const pill = document.getElementById('js-admin-rating-pill') || (tile(target)?.querySelector('.js-admin-rating-pill'));
+        if (pill) {
+          if (json.rating) {
+            pill.style.display = '';
+            pill.textContent = `Twoja ocena: ★ ${json.rating}/6`;
+          } else {
+            pill.style.display = 'none';
+          }
+        }
+      } catch (err) {
+        alert(err.message || 'Błąd');
+      } finally {
+        target.disabled = false;
+      }
+
+      // IMPORTANT: admin buttons also have class "rate-btn".
+      // Stop here to avoid triggering the client rating handler below.
+      return;
+    }
+
+    // Admin: rating clear
+    if (target && target.classList.contains('admin-rate-clear')) {
+      e.preventDefault();
+      const row = target.closest('.admin-rating-row');
+      const pid = row?.getAttribute('data-photo-id') || tile(target)?.dataset.photoId;
+      if (!pid) return;
+      try {
+        target.disabled = true;
+        const json = await post(`/admin/photo/${pid}/rate`, { rating: 0 });
+        (row || tile(target))?.querySelectorAll('.admin-rate-btn').forEach(b => b.classList.remove('is-on'));
+        const pill = document.getElementById('js-admin-rating-pill') || (tile(target)?.querySelector('.js-admin-rating-pill'));
+        if (pill) pill.style.display = 'none';
+      } catch (err) {
+        alert(err.message || 'Błąd');
+      } finally {
+        target.disabled = false;
+      }
+
+      // Avoid falling-through into the client rating handler.
+      return;
+    }
 
     // Heart
     if (target && target.classList.contains('heart')) {
@@ -79,6 +145,9 @@
       } finally {
         target.disabled = false;
       }
+
+      // Prevent falling through to client handlers.
+      return;
     }
 
     // Rating set
@@ -92,6 +161,9 @@
       try {
         target.disabled = true;
         const json = await post(`/client/photo/${pid}/rate`, { rating });
+        // Sync match metadata returned by backend (fresh admin_rating + imię fotografa)
+        if (json && typeof json.admin_rating !== 'undefined') t.dataset.adminRating = String(json.admin_rating || 0);
+        if (json && typeof json.photographer_first_name !== 'undefined') t.dataset.photographerName = String(json.photographer_first_name || '');
         setRatingUI(t, json.rating);
       } catch (err) {
         alert(err.message || 'Błąd');
@@ -110,6 +182,8 @@
       try {
         target.disabled = true;
         const json = await post(`/client/photo/${pid}/rate`, { rating: 0 });
+        if (json && typeof json.admin_rating !== 'undefined') t.dataset.adminRating = String(json.admin_rating || 0);
+        if (json && typeof json.photographer_first_name !== 'undefined') t.dataset.photographerName = String(json.photographer_first_name || '');
         setRatingUI(t, json.rating);
       } catch (err) {
         alert(err.message || 'Błąd');
@@ -172,8 +246,12 @@
     }
 
     // Client: rating buttons on viewer page
+    // NOTE: admin viewer uses similar markup for admin_rating; ignore those controls here.
     const rateBtn = e.target?.closest?.('.rating-row .rate-btn');
     if (rateBtn) {
+      if (rateBtn.classList.contains('admin-rate-btn') || rateBtn.closest('.admin-rating-row')) {
+        return;
+      }
       e.preventDefault();
       const row = rateBtn.closest('.rating-row');
       const pid = row?.getAttribute('data-photo-id');
@@ -183,6 +261,20 @@
         const json = await post(`/client/photo/${pid}/rate`, { rating });
         row.querySelectorAll('.rate-btn').forEach(b => b.classList.remove('is-on'));
         rateBtn.classList.add('is-on');
+
+        const match = document.getElementById('js-match-pill');
+        if (row) {
+          // Update metadata from backend (works even if admin rated while page was open)
+          if (typeof json.admin_rating !== 'undefined') row.setAttribute('data-admin-rating', String(json.admin_rating || 0));
+          if (typeof json.photographer_first_name !== 'undefined') row.setAttribute('data-photographer-name', String(json.photographer_first_name || ''));
+        }
+
+        if (match) {
+          const show = !!(json && json.match);
+          match.style.display = show ? '' : 'none';
+          const name = (json && json.photographer_first_name) ? String(json.photographer_first_name) : (row?.getAttribute('data-photographer-name') || '');
+          if (name) match.textContent = `👍 ${name} też lubi`;
+        }
       } catch (err) {
         alert(err.message || 'Błąd');
       }
@@ -190,13 +282,31 @@
 
     const clearBtn = e.target?.closest?.('.rating-row .rate-clear');
     if (clearBtn) {
+      if (clearBtn.classList.contains('admin-rate-clear') || clearBtn.closest('.admin-rating-row')) {
+        return;
+      }
       e.preventDefault();
       const row = clearBtn.closest('.rating-row');
       const pid = row?.getAttribute('data-photo-id');
       if (!pid) return;
       try {
-        await post(`/client/photo/${pid}/rate`, { rating: 0 });
+        const json = await post(`/client/photo/${pid}/rate`, { rating: 0 });
         row.querySelectorAll('.rate-btn').forEach(b => b.classList.remove('is-on'));
+
+        const match = document.getElementById('js-match-pill');
+        if (row) {
+          if (typeof json.admin_rating !== 'undefined') row.setAttribute('data-admin-rating', String(json.admin_rating || 0));
+          if (typeof json.photographer_first_name !== 'undefined') row.setAttribute('data-photographer-name', String(json.photographer_first_name || ''));
+        }
+
+        if (match) {
+          const show = !!(json && json.match);
+          match.style.display = show ? '' : 'none';
+          if (show) {
+            const name = (json && json.photographer_first_name) ? String(json.photographer_first_name) : (row?.getAttribute('data-photographer-name') || '');
+            if (name) match.textContent = `👍 ${name} też lubi`;
+          }
+        }
       } catch (err) {
         alert(err.message || 'Błąd');
       }

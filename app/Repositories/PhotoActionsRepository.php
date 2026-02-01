@@ -52,6 +52,35 @@ final class PhotoActionsRepository {
     return $new;
   }
 
+  /**
+   * Pobiera admin_rating i imię fotografa (created_by -> users.first_name)
+   * dla danego zdjęcia z walidacją dostępu klienta.
+   *
+   * @return array{admin_rating:int, photographer_first_name:string}
+   */
+  public function adminRatingAndPhotographerName(int $userId, int $photoId): array {
+    $this->assertClientAccessOrFail($userId, $photoId);
+
+    $sql = "
+      SELECT
+        COALESCE(p.admin_rating, 0) AS admin_rating,
+        COALESCE(u.first_name, '') AS photographer_first_name
+      FROM photos p
+      JOIN albums a ON a.id = p.album_id
+      LEFT JOIN users u ON u.id = a.created_by
+      WHERE p.id = :pid
+      LIMIT 1
+    ";
+    $stmt = db()->prepare($sql);
+    $stmt->execute(['pid' => $photoId]);
+    $row = $stmt->fetch();
+
+    return [
+      'admin_rating' => (int)($row['admin_rating'] ?? 0),
+      'photographer_first_name' => (string)($row['photographer_first_name'] ?? ''),
+    ];
+  }
+
   /** Add public comment (is_internal=0). Returns comment payload. */
   public function addComment(int $userId, int $photoId, string $text): array {
     $this->assertClientAccessOrFail($userId, $photoId);

@@ -16,9 +16,11 @@ final class AlbumRepository {
   }
 
   public function findForUser(int $userId, int $albumId): ?array {
-    $sql = "SELECT a.id, a.title, a.created_at
+    $sql = "SELECT a.id, a.title, a.created_at,
+                   au.first_name AS photographer_first_name
             FROM user_album_access uaa
             JOIN albums a ON a.id = uaa.album_id
+            LEFT JOIN users au ON au.id = a.created_by
             WHERE uaa.user_id = :uid AND uaa.album_id = :aid
             LIMIT 1";
     $stmt = db()->prepare($sql);

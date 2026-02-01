@@ -23,9 +23,21 @@
   <p class="muted">Brak zdjęć w albumie (albo nie są jeszcze widoczne).</p>
 <?php else: ?>
   <div class="photo-grid">
+    <?php
+      $photographer = trim((string)($album['photographer_first_name'] ?? ''));
+      if ($photographer === '') $photographer = 'Fotograf';
+    ?>
     <?php foreach ($photos as $p): ?>
-      <?php $pid = (int)$p['id']; ?>
-      <div class="photo-tile" data-photo-id="<?= $pid ?>">
+      <?php
+        $pid = (int)$p['id'];
+        $cr = (int)($p['client_rating'] ?? 0);
+        $ar = (int)($p['admin_rating'] ?? 0);
+        $match = ($cr >= 2 && $ar >= 2);
+      ?>
+      <div class="photo-tile"
+           data-photo-id="<?= $pid ?>"
+           data-admin-rating="<?= $ar ?>"
+           data-photographer-name="<?= htmlspecialchars($photographer, ENT_QUOTES, 'UTF-8') ?>">
         <a class="photo-img" href="/client/photo/<?= $pid ?><?= !empty($section_id) ? ('?section='.(int)$section_id) : '' ?>">
           <?php if (!empty($p['thumb_path'])): ?>
             <img loading="lazy" alt="thumb" src="/media/photo/<?= $pid ?>/thumb" />
@@ -46,6 +58,10 @@
 
             <span class="pill blue js-rating-pill" <?= empty($p['client_rating']) ? 'style="display:none"' : '' ?>>
               ★ <span class="js-rating-val"><?= (int)($p['client_rating'] ?? 0) ?></span>/6
+            </span>
+
+            <span class="pill green js-match-pill" <?= $match ? '' : 'style="display:none"' ?>>
+              👍 <?= htmlspecialchars($photographer, ENT_QUOTES, 'UTF-8') ?> też lubi
             </span>
           </div>
 

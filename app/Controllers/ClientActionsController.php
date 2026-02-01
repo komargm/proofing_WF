@@ -33,7 +33,23 @@ final class ClientActionsController {
     if ($photoId <= 0) Response::json(['ok' => false, 'error' => 'Bad id'], 400);
 
     $new = $this->actions->setRating($userId, $photoId, $rating);
-    Response::json(['ok' => true, 'rating' => $new]);
+
+    // Dociągamy aktualny admin_rating + imię fotografa,
+    // żeby klient widział "👍 Imię też lubi" bez przeładowania.
+    $info = $this->actions->adminRatingAndPhotographerName($userId, $photoId);
+    $adminRating = (int)($info['admin_rating'] ?? 0);
+    $name = trim((string)($info['photographer_first_name'] ?? ''));
+
+    $cr = (int)($new ?? 0);
+    $match = ($cr >= 2 && $adminRating >= 2);
+
+    Response::json([
+      'ok' => true,
+      'rating' => $new,
+      'admin_rating' => $adminRating,
+      'photographer_first_name' => $name,
+      'match' => $match,
+    ]);
   }
 
   public function addComment(array $params): void {

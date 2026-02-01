@@ -16,6 +16,9 @@
       }
     }
   }
+
+  $photographer = trim((string)($album['photographer_first_name'] ?? ''));
+  if ($photographer === '') $photographer = 'Fotograf';
 ?>
 <a class="btn" href="/client/album/<?= (int)$album['id'] ?><?= $qs ?>">← Wróć do albumu</a>
 
@@ -60,7 +63,10 @@
                 data-photo-id="<?= (int)$photo['id'] ?>"
                 id="js-heart">♥</button>
 
-        <div class="rating-row" data-photo-id="<?= (int)$photo['id'] ?>">
+        <div class="rating-row"
+             data-photo-id="<?= (int)$photo['id'] ?>"
+             data-admin-rating="<?= (int)($photo['admin_rating'] ?? 0) ?>"
+             data-photographer-name="<?= htmlspecialchars($photographer ?? '', ENT_QUOTES, 'UTF-8') ?>">
           <?php for ($i=1; $i<=6; $i++): ?>
             <button type="button"
                     class="rate-btn <?= ((int)($photo['client_rating'] ?? 0) === $i) ? 'is-on' : '' ?>"
@@ -68,6 +74,17 @@
           <?php endfor; ?>
           <button type="button" class="rate-clear" title="Wyczyść ocenę">×</button>
         </div>
+      </div>
+
+      <?php
+        $cr = (int)($photo['client_rating'] ?? 0);
+        $ar = (int)($photo['admin_rating'] ?? 0);
+        $match = ($cr >= 2 && $ar >= 2);
+      ?>
+      <div class="row" style="margin-top:8px;">
+        <span class="pill green" id="js-match-pill" style="<?= $match ? '' : 'display:none;' ?>">
+          👍 <?= htmlspecialchars($photographer, ENT_QUOTES, 'UTF-8') ?> też lubi
+        </span>
       </div>
 
       <div class="divider"></div>

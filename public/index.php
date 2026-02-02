@@ -18,6 +18,7 @@ $auth   = new AuthController($authService);
 $client = new ClientController($albumRepo, $sectionRepo, $photoRepo);
 $admin  = new AdminController();
 $adminUsers = new AdminUsersController($usersRepo);
+$adminProfile = new AdminProfileController($usersRepo);
 $ingest = new IngestWizardController($ingestRepo);
 
 $adminAlbums = new AdminAlbumsController($albumRepo, $sectionRepo, $photoRepo);
@@ -77,6 +78,22 @@ $router->get('/media/photo/{id}/{kind}', fn($params) => $media->photoFile($param
 
 
 $router->get('/admin/dashboard', fn() => $admin->dashboard(), [
+  RequireAuth::handle(),
+  RequireRole::handle('admin'),
+]);
+
+
+$router->get('/admin/profile', fn() => $adminProfile->show(), [
+  RequireAuth::handle(),
+  RequireRole::handle('admin'),
+]);
+
+$router->post('/admin/profile/update', fn() => $adminProfile->updateProfile(), [
+  RequireAuth::handle(),
+  RequireRole::handle('admin'),
+]);
+
+$router->post('/admin/profile/password', fn() => $adminProfile->changePassword(), [
   RequireAuth::handle(),
   RequireRole::handle('admin'),
 ]);

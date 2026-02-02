@@ -212,4 +212,126 @@ final class UserRepository {
     }
   }
 
+  // =========================
+  // Admin: własny profil
+  // =========================
+
+  public function getAdminById(int $userId): ?array {
+    $sql = "
+      SELECT u.id, u.email, u.first_name, u.last_name, u.phone, u.messenger, u.contact_notes, u.created_at, u.last_login_at
+      FROM users u
+      JOIN user_roles ur ON ur.user_id = u.id
+      JOIN roles r ON r.id = ur.role_id
+      WHERE r.name = 'admin' AND u.id = :uid
+      LIMIT 1
+    ";
+    $stmt = db()->prepare($sql);
+    $stmt->execute(['uid' => $userId]);
+    $row = $stmt->fetch();
+    return $row ?: null;
+  }
+
+  /**
+   * @param array{first_name?:string,last_name?:string,phone?:string,messenger?:string,contact_notes?:string} $data
+   */
+  public function updateAdminProfile(int $userId, array $data): void {
+    $pdo = db();
+    $pdo->beginTransaction();
+
+    try {
+      // upewnij się, że to admin
+      $stmt = $pdo->prepare("
+        SELECT u.id
+        FROM users u
+        JOIN user_roles ur ON ur.user_id = u.id
+        JOIN roles r ON r.id = ur.role_id
+        WHERE r.name = 'admin' AND u.id = :uid
+        LIMIT 1
+      ");
+      $stmt->execute(['uid' => $userId]);
+      if (!$stmt->fetch()) {
+        throw new RuntimeException('Nie znaleziono konta admina.');
+      }
+
+      $stmt = $pdo->prepare("
+        UPDATE users
+        SET first_name = :fn,
+            last_name = :ln,
+            phone = :phone,
+            messenger = :ms,
+            contact_notes = :notes
+        WHERE id = :uid
+      ");
+      $stmt->execute([
+        'fn' => ($data['first_name'] ?? null) ?: null,
+        'ln' => ($data['last_name'] ?? null) ?: null,
+        'phone' => ($data['phone'] ?? null) ?: null,
+        'ms' => ($data['messenger'] ?? null) ?: null,
+        'notes' => ($data['contact_notes'] ?? null) ?: null,
+        'uid' => $userId,
+      ]);
+
+      try {
+        $stmt = $pdo->prepare("INSERT INTO audit_log (user_id, event, meta_json, ip) VALUES (:uid, 'admin.profile.updated', :meta, :ip)");
+        $meta = json_encode(['admin_id' => $userId], JSON_UNESCAPED_UNICODE);
+        $stmt->execute([
+          'uid' => (int)($_SESSION['user_id'] ?? 0) ?: null,
+          'meta' => $meta,
+          'ip' => $_SERVER['REMOTE_ADDR'] ?? null,
+        ]);
+      } catch (Throwable $e) {}
+
+      $pdo->commit();
+    } catch (Throwable $e) {
+      $pdo->rollBack();
+      throw $e;
+    }
+  }
+
+  public function changeAdminPassword(int $userId, string $currentPassword, string $newPassword): void {
+    $pdo = db();
+    $pdo->beginTransaction();
+
+    try {
+      // pobierz hash + upewnij się że to admin
+      $stmt = $pdo->prepare("
+        SELECT u.password_hash
+        FROM users u
+        JOIN user_roles ur ON ur.user_id = u.id
+        JOIN roles r ON r.id = ur.role_id
+        WHERE r.name = 'admin' AND u.id = :uid
+        LIMIT 1
+      ");
+      $stmt->execute(['uid' => $userId]);
+      $row = $stmt->fetch();
+      if (!$row) {
+        throw new RuntimeException('Nie znaleziono konta admina.');
+      }
+
+      $hash = (string)($row['password_hash'] ?? '');
+      if ($hash === '' || !password_verify($currentPassword, $hash)) {
+        throw new RuntimeException('Aktualne hasło jest nieprawidłowe.');
+      }
+
+      $newHash = password_hash($newPassword, PASSWORD_DEFAULT);
+      $stmt = $pdo->prepare("UPDATE users SET password_hash = :ph WHERE id = :uid");
+      $stmt->execute(['ph' => $newHash, 'uid' => $userId]);
+
+      try {
+        $stmt = $pdo->prepare("INSERT INTO audit_log (user_id, event, meta_json, ip) VALUES (:uid, 'admin.password.changed', :meta, :ip)");
+        $meta = json_encode(['admin_id' => $userId], JSON_UNESCAPED_UNICODE);
+        $stmt->execute([
+          'uid' => (int)($_SESSION['user_id'] ?? 0) ?: null,
+          'meta' => $meta,
+          'ip' => $_SERVER['REMOTE_ADDR'] ?? null,
+        ]);
+      } catch (Throwable $e) {}
+
+      $pdo->commit();
+    } catch (Throwable $e) {
+      $pdo->rollBack();
+      throw $e;
+    }
+  }
+
 }

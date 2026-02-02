@@ -9,6 +9,7 @@
   <a class="btn" href="/admin/albums">Albumy (lista)</a>
   <a class="btn" href="/admin/albums/create">+ Utwórz album (Ingest Wizard)</a>
   <a class="btn" href="/admin/users">Zarządzanie klientami</a>
+  <a class="btn" href="/admin/profile">Mój profil</a>
   <a class="btn" href="/client/dashboard">Podgląd jako klient</a>
 </div>
 

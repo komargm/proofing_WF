@@ -70,6 +70,7 @@ require_once __DIR__ . '/Controllers/ClientController.php';
 require_once __DIR__ . '/Controllers/ClientActionsController.php';
 require_once __DIR__ . '/Controllers/AdminController.php';
 require_once __DIR__ . '/Controllers/AdminUsersController.php';
+require_once __DIR__ . '/Controllers/AdminProfileController.php';
 require_once __DIR__ . '/Controllers/AdminAlbumsController.php';
 require_once __DIR__ . '/Controllers/AdminPhotoController.php';
 require_once __DIR__ . '/Controllers/AdminPhotoActionsController.php';

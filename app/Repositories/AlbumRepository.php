@@ -3,6 +3,108 @@ declare(strict_types=1);
 
 final class AlbumRepository {
 
+  /**
+   * Usuwa album (DB + pliki proofingu).
+   *
+   * - Z bazy: kasuje rekord z albums; reszta znika przez ON DELETE CASCADE
+   *   (photos, photo_files, photo_comments, user_album_access, album_sections).
+   * - Z dysku: usuwa TYLKO preview/thumb (ścieżki zapisane w photo_files)
+   *   oraz katalog albumu w path_proofing.
+   *
+   * UWAGA: oryginały (kind=original_jpg) zwykle są na NAS i bywają montowane RO,
+   * dlatego ich nie dotykamy.
+   *
+   * @return array{deleted_files:int, deleted_dirs:int}
+   */
+  public function deleteAlbum(int $albumId, string $pathProofingRoot): array {
+    $albumId = (int)$albumId;
+    if ($albumId <= 0) {
+      throw new RuntimeException('Nieprawidłowe ID albumu.');
+    }
+
+    $pathProofingRoot = rtrim((string)$pathProofingRoot, '/');
+    $rootReal = realpath($pathProofingRoot);
+
+    // 1) Zbierz ścieżki wygenerowanych plików (preview/thumb)
+    $sql = "
+      SELECT DISTINCT f.path
+      FROM photos p
+      JOIN photo_files f ON f.photo_id = p.id
+      WHERE p.album_id = :aid
+        AND f.kind IN ('preview_800','thumb')
+    ";
+    $st = db()->prepare($sql);
+    $st->execute(['aid' => $albumId]);
+    $paths = $st->fetchAll(PDO::FETCH_COLUMN) ?: [];
+
+    $deletedFiles = 0;
+    if ($rootReal) {
+      $rootReal = rtrim($rootReal, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+      foreach ($paths as $p) {
+        $p = (string)$p;
+        if ($p === '') continue;
+
+        // bezpieczeństwo: kasujemy tylko pliki w obrębie path_proofing
+        $real = @realpath($p);
+        if (!$real) continue; // brak na dysku -> pomiń
+        if (!str_starts_with($real, $rootReal)) continue;
+        if (is_file($real) && @unlink($real)) {
+          $deletedFiles++;
+        }
+      }
+    }
+
+    // 2) Spróbuj usunąć folder albumu (np. .../album_123)
+    $deletedDirs = 0;
+    if ($rootReal) {
+      $albumDir = $pathProofingRoot . "/album_{$albumId}";
+      $albumReal = @realpath($albumDir);
+      if ($albumReal && str_starts_with($albumReal . DIRECTORY_SEPARATOR, $rootReal)) {
+        $deletedDirs = $this->rrmdir($albumReal);
+      }
+    }
+
+    // 3) DB: usuń album (CASCADE posprząta resztę)
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+      $stmt = $pdo->prepare('DELETE FROM albums WHERE id = :id');
+      $stmt->execute(['id' => $albumId]);
+      $pdo->commit();
+    } catch (Throwable $e) {
+      $pdo->rollBack();
+      throw $e;
+    }
+
+    return ['deleted_files' => $deletedFiles, 'deleted_dirs' => $deletedDirs];
+  }
+
+  /**
+   * Rekurencyjne usuwanie katalogu. Zwraca liczbę usuniętych katalogów.
+   */
+  private function rrmdir(string $dir): int {
+    $count = 0;
+    if (!is_dir($dir)) return 0;
+
+    $it = new RecursiveIteratorIterator(
+      new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS),
+      RecursiveIteratorIterator::CHILD_FIRST
+    );
+    foreach ($it as $fileInfo) {
+      /** @var SplFileInfo $fileInfo */
+      $path = $fileInfo->getPathname();
+      if ($fileInfo->isDir()) {
+        @rmdir($path);
+        $count++;
+      } else {
+        @unlink($path);
+      }
+    }
+    @rmdir($dir);
+    $count++;
+    return $count;
+  }
+
   /** @return array<int, array<string, mixed>> */
   public function listForUser(int $userId): array {
     $sql = "SELECT a.id, a.title, a.created_at

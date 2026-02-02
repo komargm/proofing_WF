@@ -44,6 +44,12 @@
           <td style="padding:12px; border-bottom:1px solid #2a2a2e; white-space:nowrap;">
             <a class="btn" href="/admin/album/<?= (int)$a['id'] ?>/edit">Ustawienia</a>
             <a class="btn" href="/admin/album/<?= (int)$a['id'] ?>/photos">Podgląd</a>
+            <form method="post" action="/admin/album/<?= (int)$a['id'] ?>/delete" style="display:inline;">
+              <input type="hidden" name="csrf" value="<?= htmlspecialchars((string)($csrf ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+              <button type="submit" class="btn" style="background:#4a1414; border-color:#6b1f1f;" onclick="return confirm('Na pewno usunąć ten album?\n\nUsunie to wpisy w DB oraz pliki preview/thumb.');">
+                Usuń
+              </button>
+            </form>
           </td>
         </tr>
       <?php endforeach; ?>

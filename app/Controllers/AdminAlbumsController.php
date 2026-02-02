@@ -12,7 +12,52 @@ final class AdminAlbumsController {
     $rows = $this->albums->listAll();
     Response::html(View::page('admin/albums/index', [
       'albums' => $rows,
+      'csrf' => Csrf::token(),
     ]));
+  }
+
+  public function delete(array $params): void {
+    $id = isset($params['id']) ? (int)$params['id'] : 0;
+    if ($id <= 0) Response::html('Bad Request', 400);
+
+    Csrf::verifyOrFail($_POST['csrf'] ?? null);
+
+    $album = $this->albums->findById($id);
+    if (!$album) Response::html('Not Found', 404);
+
+    $config = require __DIR__ . '/../../config/config.php';
+    $proofRoot = (string)($config['app']['path_proofing'] ?? '/var/www/photos/previews');
+
+    try {
+      $res = $this->albums->deleteAlbum($id, $proofRoot);
+
+      // Audit
+      try {
+        $stmt = db()->prepare(
+          "INSERT INTO audit_log (user_id, album_id, event, meta_json, ip)
+           VALUES (:uid, :aid, 'album.deleted', :meta, :ip)"
+        );
+        $meta = json_encode([
+          'album_code' => (string)($album['code'] ?? ''),
+          'deleted_files' => (int)($res['deleted_files'] ?? 0),
+          'deleted_dirs' => (int)($res['deleted_dirs'] ?? 0),
+        ], JSON_UNESCAPED_UNICODE);
+        $stmt->execute([
+          'uid' => (int)($_SESSION['user_id'] ?? 0) ?: null,
+          'aid' => $id,
+          'meta' => $meta,
+          'ip' => $_SERVER['REMOTE_ADDR'] ?? null,
+        ]);
+      } catch (Throwable $e) {
+        // nie blokuj
+      }
+
+      $_SESSION['flash_success'] = 'Album usunięty (DB + pliki preview/thumb).';
+    } catch (Throwable $e) {
+      $_SESSION['flash_error'] = 'Nie udało się usunąć albumu: ' . $e->getMessage();
+    }
+
+    Response::redirect('/admin/albums');
   }
 
   public function edit(array $params): void {

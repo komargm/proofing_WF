@@ -7,6 +7,16 @@
   <a class="btn" href="/admin/album/<?= (int)$album['id'] ?>/photos">Podgląd zdjęć</a>
 </div>
 
+<div class="card" style="max-width: 860px; margin-top: 16px; border:1px solid #6b1f1f;">
+  <h3 style="margin:0 0 8px 0; color:#ffb4b4;">Strefa niebezpieczna</h3>
+  <p class="muted" style="margin-top:0;">Usunięcie albumu kasuje wpisy w bazie (album, zdjęcia, pliki, komentarze, dostępy, sekcje) oraz pliki preview/thumb w folderze proofingu. Oryginałów na NAS nie ruszamy.</p>
+
+  <form method="post" action="/admin/album/<?= (int)$album['id'] ?>/delete" style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
+    <input type="hidden" name="csrf" value="<?= htmlspecialchars(Csrf::token(), ENT_QUOTES, 'UTF-8') ?>" />
+    <button class="btn" type="submit" style="background:#4a1414; border-color:#6b1f1f;" onclick="return confirm('Na pewno usunąć TEN album?\n\nOperacji nie da się cofnąć.');">Usuń album</button>
+  </form>
+</div>
+
 <div class="card" style="max-width: 860px;">
   <form method="post" action="/admin/album/<?= (int)$album['id'] ?>/edit" style="display:grid; gap:12px;">
     <input type="hidden" name="csrf" value="<?= htmlspecialchars(Csrf::token(), ENT_QUOTES, 'UTF-8') ?>" />

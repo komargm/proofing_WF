@@ -3,11 +3,23 @@
 <h1><?= htmlspecialchars((string)$album['title'], ENT_QUOTES, 'UTF-8') ?></h1>
 <p class="muted">Utworzono: <?= htmlspecialchars((string)$album['created_at'], ENT_QUOTES, 'UTF-8') ?></p>
 
+<?php
+  /** @var ?bool $filter_selected */
+  /** @var null|int|'none' $filter_rating */
+  $qp = [];
+  if (!empty($section_id)) $qp['section'] = (int)$section_id;
+  if ($filter_selected === true) $qp['selected'] = 1;
+  if ($filter_rating === 'none') $qp['rating'] = 'none';
+  if (is_int($filter_rating) && $filter_rating >= 1 && $filter_rating <= 6) $qp['rating'] = $filter_rating;
+  $qs = !empty($qp) ? ('?' . http_build_query($qp)) : '';
+?>
+
 <div class="toolbar">
   <div class="muted">Zdjęcia: <?= (int)$count ?></div>
-  <div style="margin-left:auto; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+
+  <div style="margin-left:auto; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
     <label class="muted" for="js-section-filter">Sekcja:</label>
-    <select id="js-section-filter" class="input" style="max-width:260px;">
+    <select id="js-section-filter" class="input" style="max-width:220px;">
       <option value="">Wszystko</option>
       <?php foreach (($sections ?? []) as $s): ?>
         <option value="<?= (int)$s['id'] ?>" <?= (!empty($section_id) && (int)$section_id === (int)$s['id']) ? 'selected' : '' ?>>
@@ -15,7 +27,24 @@
         </option>
       <?php endforeach; ?>
     </select>
+
+    <label style="display:flex; gap:6px; align-items:center; cursor:pointer;">
+      <input id="js-selected-filter" type="checkbox" <?= ($filter_selected === true) ? 'checked' : '' ?> />
+      <span class="muted">♥</span>
+    </label>
+
+    <label class="muted" for="js-rating-filter">Ocena:</label>
+    <select id="js-rating-filter" class="input" style="max-width:170px;">
+      <option value="">Wszystkie</option>
+      <option value="none" <?= ($filter_rating === 'none') ? 'selected' : '' ?>>Brak oceny</option>
+      <?php for ($i=1; $i<=6; $i++): ?>
+        <option value="<?= $i ?>" <?= (is_int($filter_rating) && (int)$filter_rating === $i) ? 'selected' : '' ?>><?= $i ?></option>
+      <?php endfor; ?>
+    </select>
+
+    <button type="button" class="btn mini" id="js-filter-reset">Reset</button>
   </div>
+
   <div class="muted">Kliknij ♥, ustaw ocenę, dodaj komentarz.</div>
 </div>
 
@@ -38,7 +67,7 @@
            data-photo-id="<?= $pid ?>"
            data-admin-rating="<?= $ar ?>"
            data-photographer-name="<?= htmlspecialchars($photographer, ENT_QUOTES, 'UTF-8') ?>">
-        <a class="photo-img" href="/client/photo/<?= $pid ?><?= !empty($section_id) ? ('?section='.(int)$section_id) : '' ?>">
+        <a class="photo-img" href="/client/photo/<?= $pid ?><?= $qs ?>">
           <?php if (!empty($p['thumb_path'])): ?>
             <img loading="lazy" alt="thumb" src="/media/photo/<?= $pid ?>/thumb" />
           <?php else: ?>
@@ -94,12 +123,29 @@
 
 <script>
   (() => {
-    const sel = document.getElementById('js-section-filter');
-    if (!sel) return;
-    sel.addEventListener('change', () => {
-      const v = sel.value;
-      const base = `/client/album/<?= (int)$album['id'] ?>`;
-      window.location.href = v ? `${base}?section=${encodeURIComponent(v)}` : base;
-    });
+    const base = `/client/album/<?= (int)$album['id'] ?>`;
+    const sectionSel = document.getElementById('js-section-filter');
+    const selectedCb = document.getElementById('js-selected-filter');
+    const ratingSel  = document.getElementById('js-rating-filter');
+    const resetBtn   = document.getElementById('js-filter-reset');
+
+    const apply = () => {
+      const p = new URLSearchParams();
+      const sid = sectionSel?.value || '';
+      const selected = !!selectedCb?.checked;
+      const rating = ratingSel?.value || '';
+
+      if (sid) p.set('section', sid);
+      if (selected) p.set('selected', '1');
+      if (rating) p.set('rating', rating);
+
+      const qs = p.toString();
+      window.location.href = qs ? `${base}?${qs}` : base;
+    };
+
+    sectionSel?.addEventListener('change', apply);
+    selectedCb?.addEventListener('change', apply);
+    ratingSel?.addEventListener('change', apply);
+    resetBtn?.addEventListener('click', () => { window.location.href = base; });
   })();
 </script>

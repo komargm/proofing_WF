@@ -5,8 +5,15 @@
 
 <div id="viewer-top"></div>
 
-<?php $sid = $nav['section_id'] ?? null; ?>
-<?php $qs = ($sid !== null && (int)$sid > 0) ? ('?section='.(int)$sid) : ''; ?>
+<?php
+  $sid = $nav['section_id'] ?? null;
+  $qp = [];
+  if ($sid !== null && (int)$sid > 0) $qp['section'] = (int)$sid;
+  if (!empty($nav['selected'])) $qp['selected'] = 1;
+  if (($nav['rating'] ?? null) === 'none') $qp['rating'] = 'none';
+  if (is_int($nav['rating'] ?? null) && (int)$nav['rating'] >= 1 && (int)$nav['rating'] <= 6) $qp['rating'] = (int)$nav['rating'];
+  $qs = !empty($qp) ? ('?' . http_build_query($qp)) : '';
+?>
 
 <div style="margin: 12px 0; display:flex; gap:12px; flex-wrap:wrap;">
   <a class="btn" href="/admin/album/<?= (int)$album['id'] ?>/photos<?= $qs ?>">← Wróć do zdjęć albumu</a>

@@ -2,6 +2,17 @@
 <?php /** @var array<int,array<string,mixed>> $photos */ ?>
 <?php /** @var array<int,array<string,mixed>> $sections */ ?>
 <?php /** @var ?int $section_id */ ?>
+<?php /** @var ?bool $filter_selected */ ?>
+<?php /** @var null|int|'none' $filter_rating */ ?>
+
+<?php
+  $qp = [];
+  if (!empty($section_id)) $qp['section'] = (int)$section_id;
+  if ($filter_selected === true) $qp['selected'] = 1;
+  if ($filter_rating === 'none') $qp['rating'] = 'none';
+  if (is_int($filter_rating) && $filter_rating >= 1 && $filter_rating <= 6) $qp['rating'] = $filter_rating;
+  $qs = !empty($qp) ? ('?' . http_build_query($qp)) : '';
+?>
 
 <h1>Podgląd albumu</h1>
 
@@ -16,9 +27,9 @@
   <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
     <div><strong><?= htmlspecialchars((string)$album['title'], ENT_QUOTES, 'UTF-8') ?></strong></div>
     <div class="muted">Zdjęcia: <?= count($photos) ?></div>
-    <div style="margin-left:auto; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+    <div style="margin-left:auto; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
       <label class="muted" for="js-section-filter">Sekcja:</label>
-      <select id="js-section-filter" class="input" style="max-width:260px;">
+      <select id="js-section-filter" class="input" style="max-width:220px;">
         <option value="">Wszystko</option>
         <?php foreach ($sections as $s): ?>
           <option value="<?= (int)$s['id'] ?>" <?= (isset($section_id) && (int)$section_id === (int)$s['id']) ? 'selected' : '' ?>>
@@ -26,6 +37,22 @@
           </option>
         <?php endforeach; ?>
       </select>
+
+      <label style="display:flex; gap:6px; align-items:center; cursor:pointer;">
+        <input id="js-selected-filter" type="checkbox" <?= ($filter_selected === true) ? 'checked' : '' ?> />
+        <span class="muted">♥</span>
+      </label>
+
+      <label class="muted" for="js-rating-filter">Ocena:</label>
+      <select id="js-rating-filter" class="input" style="max-width:170px;">
+        <option value="">Wszystkie</option>
+        <option value="none" <?= ($filter_rating === 'none') ? 'selected' : '' ?>>Brak oceny</option>
+        <?php for ($i=1; $i<=6; $i++): ?>
+          <option value="<?= $i ?>" <?= (is_int($filter_rating) && (int)$filter_rating === $i) ? 'selected' : '' ?>><?= $i ?></option>
+        <?php endfor; ?>
+      </select>
+
+      <button type="button" class="btn mini" id="js-filter-reset">Reset</button>
     </div>
   </div>
   <?php if (!empty($album['album_comment'])): ?>
@@ -42,7 +69,7 @@
     <?php foreach ($photos as $p): ?>
       <?php $pid = (int)$p['id']; ?>
       <div class="photo-tile" data-photo-id="<?= $pid ?>">
-        <a class="photo-img" href="/admin/photo/<?= $pid ?><?= isset($section_id) && $section_id ? ('?section='.(int)$section_id) : '' ?>">
+        <a class="photo-img" href="/admin/photo/<?= $pid ?><?= $qs ?>">
           <?php if (!empty($p['thumb_path'])): ?>
             <img loading="lazy" alt="thumb" src="/media/photo/<?= $pid ?>/thumb" />
           <?php else: ?>
@@ -74,7 +101,7 @@
               <span class="pill" style="border-color:#6b6b75; color:#bdbdc6;">Ukryte</span>
             <?php endif; ?>
           
-            <form method="post" action="/admin/photo/<?= $pid ?>/delete" class="delete-photo-form" style="margin-left:auto;">
+            <form method="post" action="/admin/photo/<?= $pid ?>/delete<?= $qs ?>" class="delete-photo-form" style="margin-left:auto;">
               <input type="hidden" name="csrf" value="<?= htmlspecialchars(Csrf::token(), ENT_QUOTES, 'UTF-8') ?>" />
               <button type="submit" class="btn mini" style="border-color:#ff4d4f; color:#ff4d4f;">Usuń</button>
             </form>
@@ -124,14 +151,30 @@
     (() => {
       const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
-      const sel = document.getElementById('js-section-filter');
-      if (sel) {
-        sel.addEventListener('change', () => {
-          const v = sel.value;
-          const base = `/admin/album/<?= (int)$album['id'] ?>/photos`;
-          window.location.href = v ? `${base}?section=${encodeURIComponent(v)}` : base;
-        });
-      }
+      const base = `/admin/album/<?= (int)$album['id'] ?>/photos`;
+      const sectionSel = document.getElementById('js-section-filter');
+      const selectedCb = document.getElementById('js-selected-filter');
+      const ratingSel  = document.getElementById('js-rating-filter');
+      const resetBtn   = document.getElementById('js-filter-reset');
+
+      const apply = () => {
+        const p = new URLSearchParams();
+        const sid = sectionSel?.value || '';
+        const selected = !!selectedCb?.checked;
+        const rating = ratingSel?.value || '';
+
+        if (sid) p.set('section', sid);
+        if (selected) p.set('selected', '1');
+        if (rating) p.set('rating', rating);
+
+        const qs = p.toString();
+        window.location.href = qs ? `${base}?${qs}` : base;
+      };
+
+      sectionSel?.addEventListener('change', apply);
+      selectedCb?.addEventListener('change', apply);
+      ratingSel?.addEventListener('change', apply);
+      resetBtn?.addEventListener('click', () => { window.location.href = base; });
 
       // szybkie przypisanie sekcji do zdjęcia
       document.addEventListener('change', async (e) => {

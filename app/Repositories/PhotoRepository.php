@@ -9,7 +9,11 @@ final class PhotoRepository {
    *
    * @return array<int, array<string, mixed>>
    */
-  public function listForUserAlbum(int $userId, int $albumId, ?int $sectionId = null): array {
+  /**
+   * @param ?bool $selectedOnly true = tylko z serduszkiem, null/false = bez filtra
+   * @param null|int|'none' $ratingFilter null = bez filtra, 'none' = brak oceny (NULL/0), int=1..6
+   */
+  public function listForUserAlbum(int $userId, int $albumId, ?int $sectionId = null, ?bool $selectedOnly = null, $ratingFilter = null): array {
     $sql = "
       SELECT
         p.id,
@@ -48,6 +52,9 @@ final class PhotoRepository {
         AND uaa.album_id = :aid
         AND p.is_visible = 1
         " . ($sectionId !== null ? " AND p.section_id = :sid " : "") . "
+        " . ($selectedOnly ? " AND p.client_selected_at IS NOT NULL " : "") . "
+        " . ($ratingFilter === 'none' ? " AND (p.client_rating IS NULL OR p.client_rating = 0) " : "") . "
+        " . (is_int($ratingFilter) ? " AND p.client_rating = :cr " : "") . "
 
       ORDER BY p.sort_order ASC, p.id ASC
     ";
@@ -55,6 +62,7 @@ final class PhotoRepository {
     $stmt = db()->prepare($sql);
     $bind = ['uid' => $userId, 'aid' => $albumId];
     if ($sectionId !== null) $bind['sid'] = $sectionId;
+    if (is_int($ratingFilter)) $bind['cr'] = $ratingFilter;
     $stmt->execute($bind);
     return $stmt->fetchAll() ?: [];
   }
@@ -82,7 +90,11 @@ final class PhotoRepository {
   }
 
   /** @return array<int, array<string, mixed>> */
-  public function listForAdminAlbum(int $albumId, ?int $sectionId = null): array {
+  /**
+   * @param ?bool $selectedOnly true = tylko z serduszkiem, null/false = bez filtra
+   * @param null|int|'none' $ratingFilter null = bez filtra, 'none' = brak oceny (NULL/0), int=1..6
+   */
+  public function listForAdminAlbum(int $albumId, ?int $sectionId = null, ?bool $selectedOnly = null, $ratingFilter = null): array {
     $sql = "
       SELECT
         p.id,
@@ -118,11 +130,15 @@ final class PhotoRepository {
 
       WHERE p.album_id = :aid
         " . ($sectionId !== null ? " AND p.section_id = :sid " : "") . "
+        " . ($selectedOnly ? " AND p.client_selected_at IS NOT NULL " : "") . "
+        " . ($ratingFilter === 'none' ? " AND (p.client_rating IS NULL OR p.client_rating = 0) " : "") . "
+        " . (is_int($ratingFilter) ? " AND p.client_rating = :cr " : "") . "
       ORDER BY p.sort_order ASC, p.id ASC
     ";
     $stmt = db()->prepare($sql);
     $bind = ['aid' => $albumId];
     if ($sectionId !== null) $bind['sid'] = $sectionId;
+    if (is_int($ratingFilter)) $bind['cr'] = $ratingFilter;
     $stmt->execute($bind);
     return $stmt->fetchAll() ?: [];
   }
@@ -191,7 +207,11 @@ final class PhotoRepository {
 
 
 
-  public function viewerForUser(int $userId, int $photoId, ?int $sectionId = null): ?array {
+  /**
+   * @param ?bool $selectedOnly true = tylko z serduszkiem, null/false = bez filtra
+   * @param null|int|'none' $ratingFilter null = bez filtra, 'none' = brak oceny (NULL/0), int=1..6
+   */
+  public function viewerForUser(int $userId, int $photoId, ?int $sectionId = null, ?bool $selectedOnly = null, $ratingFilter = null): ?array {
     $sql = "
       SELECT
         p.id,
@@ -228,10 +248,24 @@ final class PhotoRepository {
     $row = $stmt->fetch();
     if (!$row) return null;
 
-    // Jeśli przekazano sekcję w URL, ale zdjęcie nie należy do tej sekcji,
-    // ignorujemy filtr, żeby nawigacja prev/next nie była pusta.
+    // Jeśli przekazano filtr (sekcja/serce/ocena), ale zdjęcie do niego nie pasuje,
+    // ignorujemy dany filtr, żeby podgląd + nawigacja nie była pusta.
     if ($sectionId !== null && (int)($row['section_id'] ?? 0) !== $sectionId) {
       $sectionId = null;
+    }
+    if ($selectedOnly && empty($row['client_selected_at'])) {
+      $selectedOnly = null;
+    }
+    if ($ratingFilter === 'none') {
+      $cr = (int)($row['client_rating'] ?? 0);
+      if ($cr !== 0) {
+        $ratingFilter = null;
+      }
+    } elseif (is_int($ratingFilter)) {
+      $cr = (int)($row['client_rating'] ?? 0);
+      if ($cr !== $ratingFilter) {
+        $ratingFilter = null;
+      }
     }
 
     $albumId = (int)$row['album_id'];
@@ -247,6 +281,9 @@ final class PhotoRepository {
         AND uaa.album_id = :aid
         AND p2.is_visible = 1
         " . ($sectionId !== null ? " AND p2.section_id = :sid " : "") . "
+        " . ($selectedOnly ? " AND p2.client_selected_at IS NOT NULL " : "") . "
+        " . ($ratingFilter === 'none' ? " AND (p2.client_rating IS NULL OR p2.client_rating = 0) " : "") . "
+        " . (is_int($ratingFilter) ? " AND p2.client_rating = :cr " : "") . "
         AND (p2.sort_order < :s1 OR (p2.sort_order = :s2 AND p2.id < :pid))
       ORDER BY p2.sort_order DESC, p2.id DESC
       LIMIT 1
@@ -254,6 +291,7 @@ final class PhotoRepository {
     $st = db()->prepare($sqlPrev);
     $bindPrev = ['uid' => $userId, 'aid' => $albumId, 's1' => $sortOrder, 's2' => $sortOrder, 'pid' => $photoId];
     if ($sectionId !== null) $bindPrev['sid'] = $sectionId;
+    if (is_int($ratingFilter)) $bindPrev['cr'] = $ratingFilter;
     $st->execute($bindPrev);
     $prevId = (int)($st->fetchColumn() ?: 0);
 
@@ -266,6 +304,9 @@ final class PhotoRepository {
         AND uaa.album_id = :aid
         AND p2.is_visible = 1
         " . ($sectionId !== null ? " AND p2.section_id = :sid " : "") . "
+        " . ($selectedOnly ? " AND p2.client_selected_at IS NOT NULL " : "") . "
+        " . ($ratingFilter === 'none' ? " AND (p2.client_rating IS NULL OR p2.client_rating = 0) " : "") . "
+        " . (is_int($ratingFilter) ? " AND p2.client_rating = :cr " : "") . "
         AND (p2.sort_order > :s1 OR (p2.sort_order = :s2 AND p2.id > :pid))
       ORDER BY p2.sort_order ASC, p2.id ASC
       LIMIT 1
@@ -273,6 +314,7 @@ final class PhotoRepository {
     $st = db()->prepare($sqlNext);
     $bindNext = ['uid' => $userId, 'aid' => $albumId, 's1' => $sortOrder, 's2' => $sortOrder, 'pid' => $photoId];
     if ($sectionId !== null) $bindNext['sid'] = $sectionId;
+    if (is_int($ratingFilter)) $bindNext['cr'] = $ratingFilter;
     $st->execute($bindNext);
     $nextId = (int)($st->fetchColumn() ?: 0);
 
@@ -322,6 +364,8 @@ final class PhotoRepository {
         'prev_id' => $prevId > 0 ? $prevId : null,
         'next_id' => $nextId > 0 ? $nextId : null,
         'section_id' => $sectionId,
+        'selected' => $selectedOnly ? 1 : null,
+        'rating' => $ratingFilter,
       ],
       'comments' => $comments,
     ];
@@ -329,7 +373,11 @@ final class PhotoRepository {
 
 
 
-  public function viewerForAdmin(int $photoId, ?int $sectionId = null): ?array {
+  /**
+   * @param ?bool $selectedOnly true = tylko z serduszkiem, null/false = bez filtra
+   * @param null|int|'none' $ratingFilter null = bez filtra, 'none' = brak oceny (NULL/0), int=1..6
+   */
+  public function viewerForAdmin(int $photoId, ?int $sectionId = null, ?bool $selectedOnly = null, $ratingFilter = null): ?array {
     $sql = "
       SELECT
         p.id,
@@ -360,8 +408,24 @@ final class PhotoRepository {
     $row = $stmt->fetch();
     if (!$row) return null;
 
+    // Jeśli przekazano filtr (sekcja/serce/ocena), ale zdjęcie do niego nie pasuje,
+    // ignorujemy dany filtr, żeby podgląd + nawigacja nie była pusta.
     if ($sectionId !== null && (int)($row['section_id'] ?? 0) !== $sectionId) {
       $sectionId = null;
+    }
+    if ($selectedOnly && empty($row['client_selected_at'])) {
+      $selectedOnly = null;
+    }
+    if ($ratingFilter === 'none') {
+      $cr = (int)($row['client_rating'] ?? 0);
+      if ($cr !== 0) {
+        $ratingFilter = null;
+      }
+    } elseif (is_int($ratingFilter)) {
+      $cr = (int)($row['client_rating'] ?? 0);
+      if ($cr !== $ratingFilter) {
+        $ratingFilter = null;
+      }
     }
 
     $albumId = (int)$row['album_id'];
@@ -373,6 +437,9 @@ final class PhotoRepository {
       WHERE p2.album_id = :aid
         AND p2.is_visible = 1
         " . ($sectionId !== null ? " AND p2.section_id = :sid " : "") . "
+        " . ($selectedOnly ? " AND p2.client_selected_at IS NOT NULL " : "") . "
+        " . ($ratingFilter === 'none' ? " AND (p2.client_rating IS NULL OR p2.client_rating = 0) " : "") . "
+        " . (is_int($ratingFilter) ? " AND p2.client_rating = :cr " : "") . "
         AND (p2.sort_order < :s1 OR (p2.sort_order = :s2 AND p2.id < :pid))
       ORDER BY p2.sort_order DESC, p2.id DESC
       LIMIT 1
@@ -380,6 +447,7 @@ final class PhotoRepository {
     $st = db()->prepare($sqlPrev);
     $bindPrev = ['aid' => $albumId, 's1' => $sortOrder, 's2' => $sortOrder, 'pid' => $photoId];
     if ($sectionId !== null) $bindPrev['sid'] = $sectionId;
+    if (is_int($ratingFilter)) $bindPrev['cr'] = $ratingFilter;
     $st->execute($bindPrev);
     $prevId = (int)($st->fetchColumn() ?: 0);
 
@@ -389,6 +457,9 @@ final class PhotoRepository {
       WHERE p2.album_id = :aid
         AND p2.is_visible = 1
         " . ($sectionId !== null ? " AND p2.section_id = :sid " : "") . "
+        " . ($selectedOnly ? " AND p2.client_selected_at IS NOT NULL " : "") . "
+        " . ($ratingFilter === 'none' ? " AND (p2.client_rating IS NULL OR p2.client_rating = 0) " : "") . "
+        " . (is_int($ratingFilter) ? " AND p2.client_rating = :cr " : "") . "
         AND (p2.sort_order > :s1 OR (p2.sort_order = :s2 AND p2.id > :pid))
       ORDER BY p2.sort_order ASC, p2.id ASC
       LIMIT 1
@@ -396,6 +467,7 @@ final class PhotoRepository {
     $st = db()->prepare($sqlNext);
     $bindNext = ['aid' => $albumId, 's1' => $sortOrder, 's2' => $sortOrder, 'pid' => $photoId];
     if ($sectionId !== null) $bindNext['sid'] = $sectionId;
+    if (is_int($ratingFilter)) $bindNext['cr'] = $ratingFilter;
     $st->execute($bindNext);
     $nextId = (int)($st->fetchColumn() ?: 0);
 
@@ -445,6 +517,8 @@ final class PhotoRepository {
         'prev_id' => $prevId > 0 ? $prevId : null,
         'next_id' => $nextId > 0 ? $nextId : null,
         'section_id' => $sectionId,
+        'selected' => $selectedOnly ? 1 : null,
+        'rating' => $ratingFilter,
       ],
       'comments' => $comments,
     ];

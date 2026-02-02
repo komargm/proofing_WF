@@ -98,12 +98,33 @@ final class AdminAlbumsController {
     $sectionId = isset($_GET['section']) ? (int)$_GET['section'] : null;
     if ($sectionId !== null && $sectionId <= 0) $sectionId = null;
 
+    // Filtry (grid albumu): serduszko klienta + ocena klienta
+    $selectedOnly = null;
+    if (isset($_GET['selected'])) {
+      $selectedOnly = ((string)$_GET['selected'] === '1');
+    }
+
+    $ratingFilter = null; // null | int(1..6) | 'none'
+    if (isset($_GET['rating'])) {
+      $raw = (string)$_GET['rating'];
+      if ($raw === 'none' || $raw === '0') {
+        $ratingFilter = 'none';
+      } else {
+        $v = (int)$raw;
+        if ($v >= 1 && $v <= 6) {
+          $ratingFilter = $v;
+        }
+      }
+    }
+
     $sections = $this->sections->listForAlbum($id);
-    $photos = $this->photos->listForAdminAlbum($id, $sectionId);
+    $photos = $this->photos->listForAdminAlbum($id, $sectionId, $selectedOnly, $ratingFilter);
     Response::html(View::page('admin/albums/photos', [
       'album' => $album,
       'sections' => $sections,
       'section_id' => $sectionId,
+      'filter_selected' => $selectedOnly,
+      'filter_rating' => $ratingFilter,
       'photos' => $photos,
     ]));
   }

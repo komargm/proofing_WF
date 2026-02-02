@@ -13,7 +13,25 @@ final class AdminPhotoController {
     $sectionId = isset($_GET['section']) ? (int)$_GET['section'] : null;
     if ($sectionId !== null && $sectionId <= 0) $sectionId = null;
 
-    $data = $this->photos->viewerForAdmin($photoId, $sectionId);
+    $selectedOnly = null;
+    if (isset($_GET['selected'])) {
+      $selectedOnly = ((string)$_GET['selected'] === '1');
+    }
+
+    $ratingFilter = null; // null | int(1..6) | 'none'
+    if (isset($_GET['rating'])) {
+      $raw = (string)$_GET['rating'];
+      if ($raw === 'none' || $raw === '0') {
+        $ratingFilter = 'none';
+      } else {
+        $v = (int)$raw;
+        if ($v >= 1 && $v <= 6) {
+          $ratingFilter = $v;
+        }
+      }
+    }
+
+    $data = $this->photos->viewerForAdmin($photoId, $sectionId, $selectedOnly, $ratingFilter);
     if (!$data) {
       Response::html('Not Found', 404);
     }
@@ -59,8 +77,26 @@ final class AdminPhotoController {
     $sectionId = isset($_GET['section']) ? (int)$_GET['section'] : null;
     if ($sectionId !== null && $sectionId <= 0) $sectionId = null;
 
+    $selectedOnly = null;
+    if (isset($_GET['selected'])) {
+      $selectedOnly = ((string)$_GET['selected'] === '1');
+    }
+
+    $ratingFilter = null; // null | int(1..6) | 'none'
+    if (isset($_GET['rating'])) {
+      $raw = (string)$_GET['rating'];
+      if ($raw === 'none' || $raw === '0') {
+        $ratingFilter = 'none';
+      } else {
+        $v = (int)$raw;
+        if ($v >= 1 && $v <= 6) {
+          $ratingFilter = $v;
+        }
+      }
+    }
+
     // Zapamiętaj "gdzie wrócić" zanim skasujemy rekord
-    $viewer = $this->photos->viewerForAdmin($photoId, $sectionId);
+    $viewer = $this->photos->viewerForAdmin($photoId, $sectionId, $selectedOnly, $ratingFilter);
     if (!$viewer) {
       Response::html('Not Found', 404);
     }
@@ -83,7 +119,12 @@ final class AdminPhotoController {
     }
 
     // Po usunięciu: zostań w widoku "dużego zdjęcia" — przejdź na poprzednie (lub następne)
-    $qs = ($sectionId !== null && (int)$sectionId > 0) ? ('?section='.(int)$sectionId) : '';
+    $qp = [];
+    if ($sectionId !== null && (int)$sectionId > 0) $qp['section'] = (int)$sectionId;
+    if ($selectedOnly === true) $qp['selected'] = 1;
+    if ($ratingFilter === 'none') $qp['rating'] = 'none';
+    if (is_int($ratingFilter) && $ratingFilter >= 1 && $ratingFilter <= 6) $qp['rating'] = $ratingFilter;
+    $qs = !empty($qp) ? ('?' . http_build_query($qp)) : '';
     $prevId = (int)($nav['prev_id'] ?? 0);
     $nextId = (int)($nav['next_id'] ?? 0);
 

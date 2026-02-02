@@ -34,13 +34,34 @@ final class ClientController {
     $sectionId = isset($_GET['section']) ? (int)$_GET['section'] : null;
     if ($sectionId !== null && $sectionId <= 0) $sectionId = null;
 
+    // Filtry (grid albumu): serduszko + ocena klienta
+    $selectedOnly = null;
+    if (isset($_GET['selected'])) {
+      $selectedOnly = ((string)$_GET['selected'] === '1');
+    }
+
+    $ratingFilter = null; // null | int(1..6) | 'none'
+    if (isset($_GET['rating'])) {
+      $raw = (string)$_GET['rating'];
+      if ($raw === 'none' || $raw === '0') {
+        $ratingFilter = 'none';
+      } else {
+        $v = (int)$raw;
+        if ($v >= 1 && $v <= 6) {
+          $ratingFilter = $v;
+        }
+      }
+    }
+
     $sections = $this->sections->listForAlbum($albumId);
-    $photos = $this->photos->listForUserAlbum($userId, $albumId, $sectionId);
+    $photos = $this->photos->listForUserAlbum($userId, $albumId, $sectionId, $selectedOnly, $ratingFilter);
 
     Response::html(View::page('client/album', [
       'album' => $album,
       'sections' => $sections,
       'section_id' => $sectionId,
+      'filter_selected' => $selectedOnly,
+      'filter_rating' => $ratingFilter,
       'photos' => $photos,
       'count' => count($photos),
     ]));
@@ -57,7 +78,25 @@ final class ClientController {
     $sectionId = isset($_GET['section']) ? (int)$_GET['section'] : null;
     if ($sectionId !== null && $sectionId <= 0) $sectionId = null;
 
-    $data = $this->photos->viewerForUser($userId, $photoId, $sectionId);
+    $selectedOnly = null;
+    if (isset($_GET['selected'])) {
+      $selectedOnly = ((string)$_GET['selected'] === '1');
+    }
+
+    $ratingFilter = null; // null | int(1..6) | 'none'
+    if (isset($_GET['rating'])) {
+      $raw = (string)$_GET['rating'];
+      if ($raw === 'none' || $raw === '0') {
+        $ratingFilter = 'none';
+      } else {
+        $v = (int)$raw;
+        if ($v >= 1 && $v <= 6) {
+          $ratingFilter = $v;
+        }
+      }
+    }
+
+    $data = $this->photos->viewerForUser($userId, $photoId, $sectionId, $selectedOnly, $ratingFilter);
     if (!$data) {
       Response::html('Forbidden', 403);
     }

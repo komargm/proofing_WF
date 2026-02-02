@@ -81,7 +81,10 @@ final class AdminAlbumsController {
     $title = (string)($_POST['title'] ?? '');
     $comment = isset($_POST['album_comment']) ? (string)$_POST['album_comment'] : null;
 
-    $this->albums->updateSettings($id, $title, $comment);
+    // Awaryjna kontrolka: czy album widoczny dla klienta (domyślnie TAK)
+    $isVisible = (($_POST['is_visible'] ?? '1') === '1');
+
+    $this->albums->updateSettings($id, $title, $comment, $isVisible);
     Response::redirect('/admin/albums');
   }
 

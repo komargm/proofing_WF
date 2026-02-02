@@ -7,8 +7,10 @@ final class PhotoActionsRepository {
     $sql = "
       SELECT 1
       FROM user_album_access uaa
+      JOIN albums a ON a.id = uaa.album_id AND a.is_visible = 1
       JOIN photos p ON p.album_id = uaa.album_id
       WHERE uaa.user_id = :uid AND p.id = :pid
+        AND p.is_visible = 1
       LIMIT 1
     ";
     $stmt = db()->prepare($sql);

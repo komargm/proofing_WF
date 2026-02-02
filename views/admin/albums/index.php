@@ -13,6 +13,7 @@
         <th style="text-align:left; padding:12px; border-bottom:1px solid #2a2a2e;">Kod</th>
         <th style="text-align:left; padding:12px; border-bottom:1px solid #2a2a2e;">Tytuł</th>
         <th style="text-align:left; padding:12px; border-bottom:1px solid #2a2a2e;">Utworzono</th>
+        <th style="text-align:left; padding:12px; border-bottom:1px solid #2a2a2e;">Widoczność</th>
         <th style="text-align:left; padding:12px; border-bottom:1px solid #2a2a2e;">Status</th>
         <th style="text-align:left; padding:12px; border-bottom:1px solid #2a2a2e;">Akcje</th>
       </tr>
@@ -20,7 +21,7 @@
     <tbody>
       <?php if (empty($albums)): ?>
         <tr>
-          <td colspan="6" style="padding:12px; border-bottom:1px solid #2a2a2e;" class="muted">Brak albumów w bazie.</td>
+          <td colspan="7" style="padding:12px; border-bottom:1px solid #2a2a2e;" class="muted">Brak albumów w bazie.</td>
         </tr>
       <?php endif; ?>
 
@@ -34,6 +35,14 @@
           <td style="padding:12px; border-bottom:1px solid #2a2a2e;">
             <?= htmlspecialchars((string)$a['created_at'], ENT_QUOTES, 'UTF-8') ?>
           </td>
+          <td style="padding:12px; border-bottom:1px solid #2a2a2e;">
+            <?php if (!empty($a['is_visible'])): ?>
+              <span class="badge" style="background:#163;">widoczny</span>
+            <?php else: ?>
+              <span class="badge" style="background:#4a1414; border-color:#6b1f1f;">ukryty</span>
+            <?php endif; ?>
+          </td>
+
           <td style="padding:12px; border-bottom:1px solid #2a2a2e;">
             <?php if (!empty($a['is_archived'])): ?>
               <span class="badge" style="background:#2a2a2e;">archiwum</span>

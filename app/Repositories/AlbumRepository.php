@@ -111,6 +111,7 @@ final class AlbumRepository {
             FROM user_album_access uaa
             JOIN albums a ON a.id = uaa.album_id
             WHERE uaa.user_id = :uid
+              AND a.is_visible = 1
             ORDER BY a.created_at DESC, a.id DESC";
     $stmt = db()->prepare($sql);
     $stmt->execute(['uid' => $userId]);
@@ -124,6 +125,7 @@ final class AlbumRepository {
             JOIN albums a ON a.id = uaa.album_id
             LEFT JOIN users au ON au.id = a.created_by
             WHERE uaa.user_id = :uid AND uaa.album_id = :aid
+              AND a.is_visible = 1
             LIMIT 1";
     $stmt = db()->prepare($sql);
     $stmt->execute(['uid' => $userId, 'aid' => $albumId]);
@@ -135,7 +137,7 @@ final class AlbumRepository {
   public function listAll(): array {
     // albums table in current schema:
     // id, code, title, album_comment, created_by, created_at, is_archived
-    $sql = "SELECT id, code, title, is_archived, created_at
+    $sql = "SELECT id, code, title, is_visible, is_archived, created_at
             FROM albums
             ORDER BY created_at DESC, id DESC";
     $stmt = db()->query($sql);
@@ -143,7 +145,7 @@ final class AlbumRepository {
   }
 
   public function findById(int $albumId): ?array {
-    $sql = "SELECT id, code, title, album_comment, is_archived, created_at
+    $sql = "SELECT id, code, title, album_comment, is_visible, is_archived, created_at
             FROM albums
             WHERE id = :id
             LIMIT 1";
@@ -283,7 +285,7 @@ final class AlbumRepository {
     }
   }
 
-  public function updateSettings(int $albumId, string $title, ?string $albumComment): void {
+  public function updateSettings(int $albumId, string $title, ?string $albumComment, bool $isVisible = true): void {
     $title = trim($title);
     if ($title === '' || mb_strlen($title) > 255) {
       Response::html('Bad Request', 400);
@@ -297,11 +299,13 @@ final class AlbumRepository {
 
     $sql = "UPDATE albums
             SET title = :t,
-                album_comment = :c
+                album_comment = :c,
+                is_visible = :v
             WHERE id = :id";
     $stmt = db()->prepare($sql);
     $stmt->bindValue('t', $title, PDO::PARAM_STR);
     $stmt->bindValue('c', $albumComment, PDO::PARAM_STR);
+    $stmt->bindValue('v', $isVisible ? 1 : 0, PDO::PARAM_INT);
     $stmt->bindValue('id', $albumId, PDO::PARAM_INT);
     $stmt->execute();
   }

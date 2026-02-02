@@ -9,9 +9,12 @@ class PhotoCommentRepository
         $stmt = $this->db->prepare("
             SELECT 1
             FROM photos p
+            INNER JOIN albums a
+                ON a.id = p.album_id AND a.is_visible = 1
             INNER JOIN user_album_access uaa
                 ON uaa.album_id = p.album_id AND uaa.user_id = :user_id
             WHERE p.id = :photo_id
+              AND p.is_visible = 1
             LIMIT 1
         ");
         $stmt->execute([':user_id' => $userId, ':photo_id' => $photoId]);

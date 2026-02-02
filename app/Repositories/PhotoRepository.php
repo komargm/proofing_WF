@@ -27,6 +27,7 @@ final class PhotoRepository {
         lc.created_at   AS last_comment_at
 
       FROM user_album_access uaa
+      JOIN albums a ON a.id = uaa.album_id AND a.is_visible = 1
       JOIN photos p ON p.album_id = uaa.album_id
       LEFT JOIN album_sections s ON s.id = p.section_id
       LEFT JOIN photo_files tf ON tf.photo_id = p.id AND tf.kind = 'thumb'
@@ -66,10 +67,12 @@ final class PhotoRepository {
     $sql = "
       SELECT f.path
       FROM user_album_access uaa
+      JOIN albums a ON a.id = uaa.album_id AND a.is_visible = 1
       JOIN photos p ON p.album_id = uaa.album_id
       JOIN photo_files f ON f.photo_id = p.id AND f.kind = :kind
       WHERE uaa.user_id = :uid
         AND p.id = :pid
+        AND p.is_visible = 1
       LIMIT 1
     ";
     $stmt = db()->prepare($sql);
@@ -211,7 +214,7 @@ final class PhotoRepository {
 
       FROM user_album_access uaa
       JOIN photos p ON p.album_id = uaa.album_id
-      JOIN albums a ON a.id = p.album_id
+      JOIN albums a ON a.id = p.album_id AND a.is_visible = 1
       LEFT JOIN users au ON au.id = a.created_by
       LEFT JOIN photo_files pf ON pf.photo_id = p.id AND pf.kind = 'preview_800'
       LEFT JOIN photo_files ofl ON ofl.photo_id = p.id AND ofl.kind = 'original_jpg'
@@ -238,6 +241,7 @@ final class PhotoRepository {
     $sqlPrev = "
       SELECT p2.id
       FROM user_album_access uaa
+      JOIN albums a ON a.id = uaa.album_id AND a.is_visible = 1
       JOIN photos p2 ON p2.album_id = uaa.album_id
       WHERE uaa.user_id = :uid
         AND uaa.album_id = :aid
@@ -256,6 +260,7 @@ final class PhotoRepository {
     $sqlNext = "
       SELECT p2.id
       FROM user_album_access uaa
+      JOIN albums a ON a.id = uaa.album_id AND a.is_visible = 1
       JOIN photos p2 ON p2.album_id = uaa.album_id
       WHERE uaa.user_id = :uid
         AND uaa.album_id = :aid

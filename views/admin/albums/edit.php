@@ -31,6 +31,15 @@
       <textarea class="input" name="album_comment" rows="6" maxlength="20000" placeholder="Kilka słów do klienta..." required><?= htmlspecialchars((string)($album['album_comment'] ?? ''), ENT_QUOTES, 'UTF-8') ?></textarea>
     </label>
 
+    <label style="display:flex; gap:10px; align-items:center; padding:10px 12px; border:1px solid #2a2a2e; border-radius:10px;">
+      <input type="hidden" name="is_visible" value="0" />
+      <input type="checkbox" name="is_visible" value="1" <?= !empty($album['is_visible']) ? 'checked' : '' ?> />
+      <div>
+        <div style="font-weight:600;">Widoczny dla klienta</div>
+        <div class="muted" style="margin-top:2px;">Gdy odznaczysz, album zniknie z pulpitu klienta i nie da się do niego wejść po URL.</div>
+      </div>
+    </label>
+
     <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:6px;">
       <button class="btn primary" type="submit">Zapisz ustawienia</button>
       <a class="btn" href="/admin/albums">Anuluj</a>

@@ -241,3 +241,7 @@ JOIN album_sections s
   ON s.album_id = p.album_id AND s.title = 'Główne'
 SET p.section_id = s.id
 WHERE p.section_id IS NULL;
+
+
+ALTER TABLE albums
+  ADD COLUMN is_visible TINYINT(1) NOT NULL DEFAULT 1 AFTER created_at;

@@ -28,7 +28,17 @@ final class PhotoRepository {
         pf.path AS preview_path,
 
         lc.comment_text AS last_comment_text,
-        lc.created_at   AS last_comment_at
+        lc.created_at   AS last_comment_at,
+
+        CASE
+          WHEN EXISTS (
+            SELECT 1
+            FROM photo_comments pc_un
+            WHERE pc_un.photo_id = p.id
+              AND pc_un.is_internal = 0
+              AND pc_un.user_id <> :uid_un
+              AND pc_un.id > COALESCE(pcr.last_read_comment_id, 0)
+          ) THEN 1 ELSE 0 END AS has_unread
 
       FROM user_album_access uaa
       JOIN albums a ON a.id = uaa.album_id AND a.is_visible = 1
@@ -36,6 +46,7 @@ final class PhotoRepository {
       LEFT JOIN album_sections s ON s.id = p.section_id
       LEFT JOIN photo_files tf ON tf.photo_id = p.id AND tf.kind = 'thumb'
       LEFT JOIN photo_files pf ON pf.photo_id = p.id AND pf.kind = 'preview_800'
+      LEFT JOIN photo_comment_reads pcr ON pcr.photo_id = p.id AND pcr.user_id = :uid_pcr
       LEFT JOIN (
         SELECT pc1.photo_id, pc1.comment_text, pc1.created_at
         FROM photo_comments pc1
@@ -48,7 +59,7 @@ final class PhotoRepository {
         WHERE pc1.is_internal = 0
       ) lc ON lc.photo_id = p.id
 
-      WHERE uaa.user_id = :uid
+      WHERE uaa.user_id = :uid_uaa
         AND uaa.album_id = :aid
         AND p.is_visible = 1
         " . ($sectionId !== null ? " AND p.section_id = :sid " : "") . "
@@ -60,7 +71,7 @@ final class PhotoRepository {
     ";
 
     $stmt = db()->prepare($sql);
-    $bind = ['uid' => $userId, 'aid' => $albumId];
+    $bind = ['uid_uaa' => $userId, 'uid_un' => $userId, 'uid_pcr' => $userId, 'aid' => $albumId];
     if ($sectionId !== null) $bind['sid'] = $sectionId;
     if (is_int($ratingFilter)) $bind['cr'] = $ratingFilter;
     $stmt->execute($bind);
@@ -78,23 +89,47 @@ final class PhotoRepository {
       JOIN albums a ON a.id = uaa.album_id AND a.is_visible = 1
       JOIN photos p ON p.album_id = uaa.album_id
       JOIN photo_files f ON f.photo_id = p.id AND f.kind = :kind
-      WHERE uaa.user_id = :uid
+      WHERE uaa.user_id = :uid_uaa
         AND p.id = :pid
         AND p.is_visible = 1
       LIMIT 1
     ";
     $stmt = db()->prepare($sql);
-    $stmt->execute(['uid' => $userId, 'pid' => $photoId, 'kind' => $kind]);
+    // UWAGA: placeholder w SQL to :uid_uaa, więc bind musi mieć identyczną nazwę.
+    $stmt->execute(['uid_uaa' => $userId, 'pid' => $photoId, 'kind' => $kind]);
     $row = $stmt->fetch();
     return $row['path'] ?? null;
   }
+
+
+  /**
+   * Oznacza komentarze jako przeczytane dla danego usera na danym zdjęciu.
+   * Ustawia last_read_comment_id na MAX(pc.id) (tylko publiczne: is_internal=0).
+   */
+  public function markCommentsRead(int $userId, int $photoId): void {
+    $sqlMax = "SELECT COALESCE(MAX(id),0) FROM photo_comments WHERE photo_id = :pid AND is_internal = 0";
+    $st = db()->prepare($sqlMax);
+    $st->execute(['pid' => $photoId]);
+    $maxId = (int)($st->fetchColumn() ?: 0);
+
+    $sqlUp = "
+      INSERT INTO photo_comment_reads (photo_id, user_id, last_read_comment_id, last_read_at)
+      VALUES (:pid, :uid, :cid, NOW())
+      ON DUPLICATE KEY UPDATE
+        last_read_comment_id = GREATEST(last_read_comment_id, VALUES(last_read_comment_id)),
+        last_read_at = NOW()
+    ";
+    $st2 = db()->prepare($sqlUp);
+    $st2->execute(['pid' => $photoId, 'uid' => $userId, 'cid' => $maxId]);
+  }
+
 
   /** @return array<int, array<string, mixed>> */
   /**
    * @param ?bool $selectedOnly true = tylko z serduszkiem, null/false = bez filtra
    * @param null|int|'none' $ratingFilter null = bez filtra, 'none' = brak oceny (NULL/0), int=1..6
    */
-  public function listForAdminAlbum(int $albumId, ?int $sectionId = null, ?bool $selectedOnly = null, $ratingFilter = null): array {
+  public function listForAdminAlbum(int $adminUserId, int $albumId, ?int $sectionId = null, ?bool $selectedOnly = null, $ratingFilter = null): array {
     $sql = "
       SELECT
         p.id,
@@ -110,12 +145,23 @@ final class PhotoRepository {
         pf.path AS preview_path,
 
         lc.comment_text AS last_comment_text,
-        lc.created_at   AS last_comment_at
+        lc.created_at   AS last_comment_at,
+
+        CASE
+          WHEN EXISTS (
+            SELECT 1
+            FROM photo_comments pc_un
+            WHERE pc_un.photo_id = p.id
+              AND pc_un.is_internal = 0
+              AND pc_un.user_id <> :uid_un
+              AND pc_un.id > COALESCE(pcr.last_read_comment_id, 0)
+          ) THEN 1 ELSE 0 END AS has_unread
 
       FROM photos p
       LEFT JOIN album_sections s ON s.id = p.section_id
       LEFT JOIN photo_files tf ON tf.photo_id = p.id AND tf.kind = 'thumb'
       LEFT JOIN photo_files pf ON pf.photo_id = p.id AND pf.kind = 'preview_800'
+      LEFT JOIN photo_comment_reads pcr ON pcr.photo_id = p.id AND pcr.user_id = :uid_pcr
       LEFT JOIN (
         SELECT pc1.photo_id, pc1.comment_text, pc1.created_at
         FROM photo_comments pc1
@@ -136,7 +182,7 @@ final class PhotoRepository {
       ORDER BY p.sort_order ASC, p.id ASC
     ";
     $stmt = db()->prepare($sql);
-    $bind = ['aid' => $albumId];
+    $bind = ['aid' => $albumId, 'uid_un' => $adminUserId, 'uid_pcr' => $adminUserId];
     if ($sectionId !== null) $bind['sid'] = $sectionId;
     if (is_int($ratingFilter)) $bind['cr'] = $ratingFilter;
     $stmt->execute($bind);
@@ -182,13 +228,13 @@ final class PhotoRepository {
       FROM user_album_access uaa
       JOIN photos p ON p.album_id = uaa.album_id
       JOIN photo_files f ON f.photo_id = p.id AND f.kind = 'original_jpg'
-      WHERE uaa.user_id = :uid
+      WHERE uaa.user_id = :uid_uaa
         AND p.id = :pid
         AND p.download_allowed_at IS NOT NULL
       LIMIT 1
     ";
     $stmt = db()->prepare($sql);
-    $stmt->execute(['uid' => $userId, 'pid' => $photoId]);
+    $stmt->execute(['uid_uaa' => $userId, 'pid' => $photoId]);
     $row = $stmt->fetch();
     return $row['path'] ?? null;
   }
@@ -238,13 +284,13 @@ final class PhotoRepository {
       LEFT JOIN users au ON au.id = a.created_by
       LEFT JOIN photo_files pf ON pf.photo_id = p.id AND pf.kind = 'preview_800'
       LEFT JOIN photo_files ofl ON ofl.photo_id = p.id AND ofl.kind = 'original_jpg'
-      WHERE uaa.user_id = :uid
+      WHERE uaa.user_id = :uid_uaa
         AND p.id = :pid
         AND p.is_visible = 1
       LIMIT 1
     ";
     $stmt = db()->prepare($sql);
-    $stmt->execute(['uid' => $userId, 'pid' => $photoId]);
+    $stmt->execute(['uid_uaa' => $userId, 'pid' => $photoId]);
     $row = $stmt->fetch();
     if (!$row) return null;
 
@@ -277,7 +323,7 @@ final class PhotoRepository {
       FROM user_album_access uaa
       JOIN albums a ON a.id = uaa.album_id AND a.is_visible = 1
       JOIN photos p2 ON p2.album_id = uaa.album_id
-      WHERE uaa.user_id = :uid
+      WHERE uaa.user_id = :uid_uaa
         AND uaa.album_id = :aid
         AND p2.is_visible = 1
         " . ($sectionId !== null ? " AND p2.section_id = :sid " : "") . "
@@ -289,7 +335,7 @@ final class PhotoRepository {
       LIMIT 1
     ";
     $st = db()->prepare($sqlPrev);
-    $bindPrev = ['uid' => $userId, 'aid' => $albumId, 's1' => $sortOrder, 's2' => $sortOrder, 'pid' => $photoId];
+    $bindPrev = ['uid_uaa' => $userId, 'aid' => $albumId, 's1' => $sortOrder, 's2' => $sortOrder, 'pid' => $photoId];
     if ($sectionId !== null) $bindPrev['sid'] = $sectionId;
     if (is_int($ratingFilter)) $bindPrev['cr'] = $ratingFilter;
     $st->execute($bindPrev);
@@ -300,7 +346,7 @@ final class PhotoRepository {
       FROM user_album_access uaa
       JOIN albums a ON a.id = uaa.album_id AND a.is_visible = 1
       JOIN photos p2 ON p2.album_id = uaa.album_id
-      WHERE uaa.user_id = :uid
+      WHERE uaa.user_id = :uid_uaa
         AND uaa.album_id = :aid
         AND p2.is_visible = 1
         " . ($sectionId !== null ? " AND p2.section_id = :sid " : "") . "
@@ -312,7 +358,7 @@ final class PhotoRepository {
       LIMIT 1
     ";
     $st = db()->prepare($sqlNext);
-    $bindNext = ['uid' => $userId, 'aid' => $albumId, 's1' => $sortOrder, 's2' => $sortOrder, 'pid' => $photoId];
+    $bindNext = ['uid_uaa' => $userId, 'aid' => $albumId, 's1' => $sortOrder, 's2' => $sortOrder, 'pid' => $photoId];
     if ($sectionId !== null) $bindNext['sid'] = $sectionId;
     if (is_int($ratingFilter)) $bindNext['cr'] = $ratingFilter;
     $st->execute($bindNext);

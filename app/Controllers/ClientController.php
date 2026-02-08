@@ -103,6 +103,9 @@ final class ClientController {
 
     $data['sections'] = $this->sections->listForAlbum((int)($data['album']['id'] ?? 0));
 
+    // wejście w podgląd zdjęcia = oznacz chat jako przeczytany
+    $this->photos->markCommentsRead($userId, $photoId);
+
     Response::html(View::page('client/photo', $data));
   }
 }

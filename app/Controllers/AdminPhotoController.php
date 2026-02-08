@@ -36,6 +36,12 @@ final class AdminPhotoController {
       Response::html('Not Found', 404);
     }
 
+    // wejście w podgląd zdjęcia = oznacz chat jako przeczytany (admin)
+    $adminId = (int)($_SESSION['user_id'] ?? 0);
+    if ($adminId > 0) {
+      $this->photos->markCommentsRead($adminId, $photoId);
+    }
+
     Response::html(View::page('admin/photo', $data));
   }
 

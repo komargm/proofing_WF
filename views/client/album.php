@@ -68,6 +68,9 @@
            data-admin-rating="<?= $ar ?>"
            data-photographer-name="<?= htmlspecialchars($photographer, ENT_QUOTES, 'UTF-8') ?>">
         <a class="photo-img" href="/client/photo/<?= $pid ?><?= $qs ?>">
+          <?php if (!empty($p['has_unread'])): ?>
+            <div class="unread-badge" title="Nowa wiadomość">✉</div>
+          <?php endif; ?>
           <?php if (!empty($p['thumb_path'])): ?>
             <img loading="lazy" alt="thumb" src="/media/photo/<?= $pid ?>/thumb" />
           <?php else: ?>

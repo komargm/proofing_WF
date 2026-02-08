@@ -118,7 +118,8 @@ final class AdminAlbumsController {
     }
 
     $sections = $this->sections->listForAlbum($id);
-    $photos = $this->photos->listForAdminAlbum($id, $sectionId, $selectedOnly, $ratingFilter);
+    $adminId = (int)($_SESSION['user_id'] ?? 0);
+    $photos = $this->photos->listForAdminAlbum($adminId, $id, $sectionId, $selectedOnly, $ratingFilter);
     Response::html(View::page('admin/albums/photos', [
       'album' => $album,
       'sections' => $sections,

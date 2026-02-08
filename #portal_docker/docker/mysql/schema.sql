@@ -245,3 +245,24 @@ WHERE p.section_id IS NULL;
 
 ALTER TABLE albums
   ADD COLUMN is_visible TINYINT(1) NOT NULL DEFAULT 1 AFTER created_at;
+
+
+
+
+
+
+
+
+
+
+CREATE TABLE IF NOT EXISTS photo_comment_reads (
+  photo_id BIGINT UNSIGNED NOT NULL,
+  user_id  BIGINT UNSIGNED NOT NULL,
+  last_read_comment_id BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  last_read_at         DATETIME NULL,
+  PRIMARY KEY (photo_id, user_id),
+  KEY idx_pcr_user (user_id),
+  CONSTRAINT fk_pcr_photo FOREIGN KEY (photo_id) REFERENCES photos(id) ON DELETE CASCADE,
+  CONSTRAINT fk_pcr_user  FOREIGN KEY (user_id)  REFERENCES users(id)  ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+

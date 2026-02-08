@@ -70,6 +70,9 @@
       <?php $pid = (int)$p['id']; ?>
       <div class="photo-tile" data-photo-id="<?= $pid ?>">
         <a class="photo-img" href="/admin/photo/<?= $pid ?><?= $qs ?>">
+          <?php if (!empty($p['has_unread'])): ?>
+            <div class="unread-badge" title="Nowa wiadomość od klienta">✉</div>
+          <?php endif; ?>
           <?php if (!empty($p['thumb_path'])): ?>
             <img loading="lazy" alt="thumb" src="/media/photo/<?= $pid ?>/thumb" />
           <?php else: ?>

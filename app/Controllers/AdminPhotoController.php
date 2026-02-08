@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 final class AdminPhotoController {
-  public function __construct(private PhotoRepository $photos) {}
+  public function __construct(private PhotoRepository $photos, private AlbumRepository $albums) {}
 
   public function photo(array $params): void {
     $photoId = isset($params['id']) ? (int)$params['id'] : 0;
@@ -68,6 +68,60 @@ final class AdminPhotoController {
     $this->photos->setSection($photoId, $sid);
     Response::json(['ok' => true, 'section_id' => $sid]);
   }
+
+  /**
+   * POST: Rescan tylko jednego zdjęcia (wymuszone przeliczenie preview/thumb z watermarkiem).
+   * Używa tego samego workera co rescan albumu i tej samej strony logów.
+   */
+  public function rescanStart(array $params): void {
+    $photoId = isset($params['id']) ? (int)$params['id'] : 0;
+    if ($photoId <= 0) {
+      Response::html('Bad Request', 400);
+    }
+
+    Csrf::verifyOrFail($_POST['csrf'] ?? null);
+
+    $watermark = ((string)($_POST['watermark'] ?? '1')) === '1';
+
+    // Force rescan (nawet jeśli mtime/size się nie zmieniło) – praktyczne po retuszu / zmianie watermarka
+    $plan = $this->albums->buildRescanPlanForPhoto($photoId, true);
+    if (!$plan) {
+      Response::html('Not Found', 404);
+    }
+
+    $albumId = (int)$plan['album_id'];
+    $album = $this->albums->findById($albumId);
+    if (!$album) {
+      Response::html('Not Found', 404);
+    }
+
+    $jobId = bin2hex(random_bytes(8));
+    $manifestPath = "/tmp/wf_rescan_{$jobId}.json";
+    $logPath      = "/tmp/wf_rescan_{$jobId}.log";
+
+    $manifest = [
+      'job_id' => $jobId,
+      'album_id' => $albumId,
+      'album_code' => (string)($album['code'] ?? ''),
+      'watermark' => $watermark,
+      'items' => [ $plan['item'] ],
+    ];
+    file_put_contents($manifestPath, json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+
+    file_put_contents($logPath, "[WF] RESCAN(one) start job {$jobId} album_id={$albumId} photo_id={$photoId} items=1\n");
+
+    $py = '/usr/bin/python3';
+    $script = '/var/www/html/app/Ingest/rescan_album.py';
+    $cmd = escapeshellcmd($py) . ' ' . escapeshellarg($script)
+      . ' --manifest ' . escapeshellarg($manifestPath)
+      . ' --log ' . escapeshellarg($logPath)
+      . ' >> ' . escapeshellarg($logPath) . ' 2>&1 &';
+
+    @shell_exec($cmd);
+
+    Response::redirect("/admin/album/{$albumId}/rescan/run/{$jobId}");
+  }
+
   public function delete(array $params): void {
     $photoId = isset($params['id']) ? (int)$params['id'] : 0;
     if ($photoId <= 0) {

@@ -319,7 +319,104 @@ final class AlbumRepository {
    *
    * @return array{items:array<int, array{photo_id:int, src:string, preview_dest:string, thumb_dest:string}>}
    */
-  public function buildRescanPlan(int $albumId): array {
+  
+  /**
+   * Buduje plan rescanu tylko dla jednego zdjęcia.
+   * $force = true -> zawsze regeneruje preview/thumb (przydatne po retuszu / zmianie watermarka),
+   * ale i tak aktualizuje w DB metadane oryginału (size/mtime).
+   *
+   * @return ?array{album_id:int, item:array{photo_id:int,src:string,preview_dest:string,thumb_dest:string}}
+   */
+  public function buildRescanPlanForPhoto(int $photoId, bool $force = true): ?array {
+    $sql = "
+      SELECT
+        p.id AS photo_id,
+        p.album_id AS album_id,
+        ofi.path AS src,
+        ofi.file_size_bytes AS db_size,
+        ofi.file_mtime AS db_mtime,
+        pfi.path AS preview_dest,
+        tfi.path AS thumb_dest
+      FROM photos p
+      JOIN photo_files ofi ON ofi.photo_id = p.id AND ofi.kind = 'original_jpg'
+      JOIN photo_files pfi ON pfi.photo_id = p.id AND pfi.kind = 'preview_800'
+      JOIN photo_files tfi ON tfi.photo_id = p.id AND tfi.kind = 'thumb'
+      WHERE p.id = :pid
+      LIMIT 1
+    ";
+    $stmt = db()->prepare($sql);
+    $stmt->execute(['pid' => $photoId]);
+    $r = $stmt->fetch();
+    if (!$r) return null;
+
+    $pid = (int)$r['photo_id'];
+    $albumId = (int)$r['album_id'];
+    $src = (string)$r['src'];
+    $preview = (string)$r['preview_dest'];
+    $thumb = (string)$r['thumb_dest'];
+
+    if ($src === '' || !is_file($src)) {
+      return null;
+    }
+
+    $fsz = @filesize($src);
+    $fmt = @filemtime($src);
+    if ($fsz === false || $fmt === false) {
+      return null;
+    }
+
+    $dbSize = $r['db_size'] !== null ? (int)$r['db_size'] : null;
+    $dbMtimeStr = $r['db_mtime'] !== null ? (string)$r['db_mtime'] : null;
+    $dbMtime = null;
+    if ($dbMtimeStr) {
+      $ts = strtotime($dbMtimeStr . ' UTC');
+      if ($ts !== false) $dbMtime = $ts;
+    }
+
+    $needs = false;
+    if ($force) {
+      $needs = true;
+    } else {
+      if ($dbSize === null || $dbMtime === null) {
+        $needs = true;
+      } else {
+        if ($dbSize !== (int)$fsz) $needs = true;
+        if ((int)$dbMtime !== (int)$fmt) $needs = true;
+      }
+    }
+
+    // aktualizujemy metadane oryginału (zawsze)
+    $upd = db()->prepare(
+      "UPDATE photo_files
+       SET file_size_bytes = :sz,
+           file_mtime = :mt
+       WHERE photo_id = :pid AND kind = 'original_jpg'"
+    );
+    $upd->execute([
+      'sz' => (int)$fsz,
+      'mt' => gmdate('Y-m-d H:i:s', (int)$fmt),
+      'pid' => $pid,
+    ]);
+
+    if (!$needs) {
+      // w praktyce może nie być użyte, ale zostawiamy możliwość trybu "smart"
+      return ['album_id' => $albumId, 'item' => [
+        'photo_id' => $pid,
+        'src' => $src,
+        'preview_dest' => $preview,
+        'thumb_dest' => $thumb,
+      ]];
+    }
+
+    return ['album_id' => $albumId, 'item' => [
+      'photo_id' => $pid,
+      'src' => $src,
+      'preview_dest' => $preview,
+      'thumb_dest' => $thumb,
+    ]];
+  }
+
+public function buildRescanPlan(int $albumId): array {
     $sql = "
       SELECT
         p.id AS photo_id,

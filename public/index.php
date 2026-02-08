@@ -24,7 +24,7 @@ $ingest = new IngestWizardController($ingestRepo);
 $adminAlbums = new AdminAlbumsController($albumRepo, $sectionRepo, $photoRepo);
 $adminPhotoActionsRepo = new AdminPhotoActionsRepository();
 $adminPhotoActions = new AdminPhotoActionsController($adminPhotoActionsRepo);
-$adminPhoto = new AdminPhotoController($photoRepo);
+$adminPhoto = new AdminPhotoController($photoRepo, $albumRepo);
 
 $media  = new MediaController($photoRepo);
 $clientActions = new ClientActionsController($photoActionsRepo);
@@ -198,6 +198,11 @@ $router->post('/admin/photo/{id}/download-allowed', fn($p) => $adminPhoto->setDo
   RequireRole::handle('admin'),
 ]);
 $router->post('/admin/photo/{id}/delete', fn($p) => $adminPhoto->delete($p), [
+  RequireAuth::handle(),
+  RequireRole::handle('admin'),
+]);
+// Admin: Rescan pojedynczego zdjęcia (wymuszone przeliczenie preview/thumb)
+$router->post('/admin/photo/{id}/rescan', fn($p) => $adminPhoto->rescanStart($p), [
   RequireAuth::handle(),
   RequireRole::handle('admin'),
 ]);

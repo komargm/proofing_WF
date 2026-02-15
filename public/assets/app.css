@@ -556,3 +556,107 @@ td .muted{ color: rgba(242,242,242,.70); }
     flex: 1 1 calc(50% - 12px);
   }
 }
+
+
+/* ===== Admin /albums responsive layout ===== */
+.hide-mobile{ display:block; }
+.show-mobile{ display:none; }
+
+.admin-albums-cards{ display:grid; gap: 12px; }
+
+.admin-album-card{ padding: 14px; }
+.admin-album-head{ display:flex; align-items:flex-start; justify-content: space-between; gap: 10px; }
+.admin-album-title{ font-weight: 700; font-size: 16px; line-height: 1.25; }
+.admin-album-id{ font-size: 12px; white-space: nowrap; }
+
+.admin-album-meta{ display:grid; gap: 10px; }
+.admin-album-row{ display:flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.admin-album-row code{ font-size: 12px; padding: 2px 6px; border-radius: 8px; background: rgba(255,255,255,.06); border: 1px solid #232329; }
+
+.admin-album-badges{ display:flex; gap: 8px; flex-wrap: wrap; }
+
+.admin-album-actions{ display:flex; gap: 10px; flex-wrap: wrap; }
+.btn-danger{ background:#4a1414; border-color:#6b1f1f; }
+
+@media (max-width: 720px){
+  .hide-mobile{ display:none !important; }
+  .show-mobile{ display:block !important; }
+
+  /* wąski ekran: akcje pod sobą, pełna szerokość */
+  .admin-album-actions .btn,
+  .admin-album-actions button.btn{
+    flex: 1 1 140px;
+  }
+}
+
+/* Przełączanie widoku listy albumów: tabela (desktop) / karty (mobile) */
+.albums-mobile { display: none; }
+
+@media (max-width: 768px) {
+  .albums-desktop { display: none !important; }
+  .albums-mobile  { display: block !important; }
+}
+
+@media (min-width: 769px) {
+  .albums-desktop { display: block !important; }
+  .albums-mobile  { display: none !important; }
+}
+
+/* ===== ADMIN /admin/albums (cleanup: no inline styles) ===== */
+
+.admin-albums-actions{
+  margin: 16px 0;
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+}
+
+/* desktop table wrapper just for albums: keep it comfortably wide */
+.admin-albums-table-wrap table{
+  min-width: 980px;
+}
+
+/* action column shouldn't wrap */
+.admin-albums-col-actions,
+.admin-albums-table-table td.admin-albums-col-actions{
+  white-space: nowrap;
+  width: 1%;
+}
+
+/* inline form helper */
+form.inline{ display:inline; }
+
+/* Badge variants used in albums list */
+.badge--ok{
+  background:#163;
+  border-color: rgba(255,255,255,.10);
+}
+.badge--danger{
+  background:#4a1414;
+  border-color:#6b1f1f;
+}
+.badge--muted{
+  background:#2a2a2e;
+  border-color: rgba(255,255,255,.10);
+}
+
+/* Mobile: wyróżniony nagłówek karty albumu (początek sekcji) */
+@media (max-width: 768px){
+  .admin-album-card{
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .admin-album-head--highlight{
+    padding: 14px;
+    background: linear-gradient(180deg, rgba(120,170,255,.16), rgba(255,255,255,.02));
+    border-bottom: 1px solid rgba(255,255,255,.10);
+  }
+
+  .admin-album-meta,
+  .admin-album-actions{
+    padding: 14px;
+  }
+
+  .admin-album-actions{ padding-top: 0; }
+}

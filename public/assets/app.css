@@ -164,6 +164,15 @@ a.card.album:hover { border-color: #2b6cff; }
   margin: 12px 0 16px;
 }
 
+.toolbar-actions{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+
+/* Generic admin card helpers (used by mobile lists) */
+.admin-card-hover{ transition: border-color .15s ease, background .15s ease, transform .15s ease; }
+.admin-card-hover:hover{ border-color: rgba(120,170,255,.45); background: rgba(255,255,255,.03); transform: translateY(-1px); }
+
+.admin-kv{ display:flex; justify-content: space-between; gap: 12px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,.04); }
+.admin-kv:last-child{ border-bottom: 0; }
+
 /* Tables (admin lists) */
 table{ width:100%; border-collapse: collapse; }
 thead th{
@@ -660,3 +669,79 @@ form.inline{ display:inline; }
 
   .admin-album-actions{ padding-top: 0; }
 }
+
+/* =========================================
+   Admin: USERS list responsive
+   ========================================= */
+
+.users-mobile{ display:none; }
+
+@media (max-width: 768px){
+  .users-desktop{ display:none !important; }
+  .users-mobile{ display:block !important; }
+}
+@media (min-width: 769px){
+  .users-desktop{ display:block !important; }
+  .users-mobile{ display:none !important; }
+}
+
+.admin-users-cards{ display:grid; gap: 12px; }
+
+.admin-user-card{ padding: 0; overflow:hidden; }
+.admin-user-head{ padding: 14px; display:flex; justify-content: space-between; gap: 10px; align-items:flex-start; border-bottom: 1px solid rgba(255,255,255,.10); }
+.admin-user-title{ font-weight: 700; font-size: 16px; line-height: 1.25; }
+.admin-user-id{ font-size: 12px; white-space: nowrap; }
+.admin-user-meta{ padding: 14px; display:grid; gap: 4px; }
+.admin-user-badges{ display:flex; gap: 8px; flex-wrap:wrap; margin-top: 8px; }
+.admin-user-actions{ padding: 0 14px 14px; display:flex; gap:10px; }
+.admin-users-col-actions{ white-space: nowrap; width: 1%; }
+
+/* Flash card (users create/update summary) */
+.flash-card{ border: 1px solid #2b6cff; }
+.flash-grid{ display:grid; gap:6px; margin-top:8px; }
+.flash-sub{ margin-top:6px; }
+
+/* =========================================
+   Admin: AUDIT responsive
+   ========================================= */
+
+.audit-mobile{ display:none; }
+
+@media (max-width: 768px){
+  .audit-desktop{ display:none !important; }
+  .audit-mobile{ display:block !important; }
+}
+@media (min-width: 769px){
+  .audit-desktop{ display:block !important; }
+  .audit-mobile{ display:none !important; }
+}
+
+.admin-audit-cards{ display:grid; gap: 12px; }
+.admin-audit-card{ padding: 0; overflow:hidden; }
+.admin-audit-head{ padding: 14px; display:flex; justify-content: space-between; gap: 10px; align-items:flex-start; border-bottom: 1px solid rgba(255,255,255,.10); }
+.admin-audit-id{ font-size: 12px; white-space: nowrap; }
+.admin-audit-meta{ padding: 14px; display:grid; gap: 6px; }
+.admin-audit-metajson{ margin-top: 8px; line-height: 1.35; }
+
+/* Shared highlighted head for mobile cards */
+@media (max-width: 768px){
+  .admin-card-head--highlight{
+    background: linear-gradient(180deg, rgba(120,170,255,.16), rgba(255,255,255,.02));
+  }
+}
+
+/* =========================================
+   Admin: SECTIONS page cleanup
+   ========================================= */
+
+.admin-sections-album{ margin-bottom: 12px; }
+.admin-sections-album-head{ display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+
+.admin-sections-add{ margin-bottom: 12px; }
+.admin-sections-add-form{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.admin-sections-hint{ margin-top:8px; }
+
+.admin-sections-list{ display:flex; flex-direction: column; gap: 10px; }
+.admin-sections-item{ display:flex; gap: 8px; align-items:center; flex-wrap:wrap; border:1px solid rgba(255,255,255,.08); padding:10px; border-radius:12px; }
+.admin-sections-title{ min-width: 220px; }
+.admin-sections-rename{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-left:auto; }

@@ -526,3 +526,33 @@ td .muted{ color: rgba(242,242,242,.70); }
   font-size:13px;
   opacity:.75;
 }
+ /**/
+ /* Dashboard stats — mobile pewniak */
+@media (max-width: 640px){
+  .stats-grid{
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .stat{
+    padding: 14px;
+  }
+  .stat-val{
+    font-size: 22px;
+  }
+  .stat-lbl{
+    font-size: 12px;
+  }
+}
+
+/* Fallback gdyby jakaś przeglądarka nie ogarniała grid */
+@supports not (display: grid){
+  .stats-grid{
+    display:flex;
+    flex-wrap:wrap;
+    gap:12px;
+  }
+  .stat{
+    flex: 1 1 calc(50% - 12px);
+  }
+}

@@ -1,3 +1,5 @@
 app/Ingest/test.py
 \#portal_docker/schema.sql
 \#portal_docker/send.zip
+app/Ingest/Thumbs.db
+app/Repositories/AlbumRepository_Patch51.php

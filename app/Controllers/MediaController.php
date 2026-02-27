@@ -45,6 +45,7 @@ final class MediaController {
   }
 
 
+  
   public function downloadOriginal(array $params): void {
     $userId = (int)($_SESSION['user_id'] ?? 0);
     $role = (string)($_SESSION['user_role'] ?? '');
@@ -52,6 +53,14 @@ final class MediaController {
     if ($photoId <= 0) {
       Response::html('Bad Request', 400);
     }
+
+    // --- KLUCZ: nie blokuj sesji i nie daj się ubić timeoutem ---
+    @set_time_limit(0);
+    @ignore_user_abort(true);
+    if (session_status() === PHP_SESSION_ACTIVE) {
+      session_write_close(); // uwalnia lock sesji (ważne przy wielu requestach)
+    }
+    while (ob_get_level() > 0) { @ob_end_clean(); } // usuń bufory, żeby bajty leciały od razu
 
     if ($role === 'admin') {
       $path = $this->photos->filePathForAdmin($photoId, 'original_jpg');
@@ -68,17 +77,30 @@ final class MediaController {
     }
 
     $name = basename($real);
+    $size = @filesize($real);
 
-    header('Content-Type: image/jpeg');
+    header('Content-Type: application/octet-stream');
     header('X-Content-Type-Options: nosniff');
-    header('Content-Disposition: attachment; filename="' . addslashes($name) . '"');
-    header('Cache-Control: private, max-age=0');
+    header('Content-Disposition: attachment; filename="' . str_replace('"', '', $name) . '"');
+    header('Cache-Control: private, no-transform, max-age=0');
+    header('X-Accel-Buffering: no');
+    if ($size !== false) {
+      header('Content-Length: ' . $size);
+    }
 
     $fp = fopen($real, 'rb');
     if ($fp === false) {
       Response::html('Not Found', 404);
     }
-    fpassthru($fp);
+
+    // --- stabilny streaming w kawałkach (DSM proxy to lubi) ---
+    $chunk = 1024 * 1024; // 1MB
+    while (!feof($fp)) {
+      $buf = fread($fp, $chunk);
+      if ($buf === false) break;
+      echo $buf;
+      flush();
+    }
     fclose($fp);
     exit;
   }
